@@ -5,7 +5,7 @@ export function Footer() {
                 <p>
                     You've reached the bottom. Thanks for visiting! Check out my
                     <a 
-                        href="/portfolio/assets/Andy_Wang_Resume.pdf" 
+                        href="/assets/Andy_Wang_Resume.pdf" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="mx-1 text-[#5d97b3] hover:text-[#7bb3d1] transition-colors underline"

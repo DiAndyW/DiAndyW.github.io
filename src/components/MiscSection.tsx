@@ -45,7 +45,7 @@ const MiscSection: React.FC = () => {
         {
             id: 2,
             type: 'image',
-            frontImage: "/portfolio/assets/rain.jpg", 
+            frontImage: "/assets/rain.jpg", 
             isLocalImage: true,
             backContent: {
                 title: "Post Rain at UCLA",

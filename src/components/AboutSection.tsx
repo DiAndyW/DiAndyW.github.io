@@ -2,7 +2,7 @@ export function AboutSection() {
     return (
         <div className="flex self-center items-center">
             <div className="mt-8 font-normal">
-                <img src="/portfolio/assets/pic.jpg" alt="cat" className="w-1/3 h-auto ml-4 border-2 border-[#5d97b3] rounded-full max-w-48 min-w-36"></img>
+                <img src="/assets/pic.jpg" alt="cat" className="w-1/3 h-auto ml-4 border-2 border-[#5d97b3] rounded-full max-w-48 min-w-36"></img>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl p-4">
                 Hi! I'm Andy Wang
                 </h1>
