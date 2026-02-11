@@ -9,7 +9,7 @@ const ProjectSection = () => {
             title: "Bloon Tower Defense Training Camp",
             technologies: ['Three.js', 'Blender'],
             description: "Created a 3D first-person shooter aim trainer inspired by Balloon Towers Defense and Aim Labs.",
-            link: "https://github.com/DiAndyW/174a-project",
+            link: "https://diandyw.github.io/BTDTrainingCamp/",
             points: [
                 "Overhauled balloon movement and added settings, allowing for more customizable gameplay",
                 "Created custom assets for various objects in game, improving game quality and completeness",
