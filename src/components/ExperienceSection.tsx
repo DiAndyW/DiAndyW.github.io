@@ -6,6 +6,19 @@ const ExperienceSection = () => {
     const Content = [
         {
             id: 1,
+            time: "Nov 2025 - Present",
+            title: "Undergraduate Researcher",
+            organization: "The B. John Garrick Institute for the Risk Sciences at UCLA",
+            technologies: ['Python', 'LangChain', 'OpenAI API'],
+            description: "Developed an LLM pipeline to extract and validate causal relationships between organizational factors and human performance from Human Reliability Analysis research literature",
+            points: [
+                "Engineered a multi-pass extraction pipeline using LangChain and GPT, clustering factors and running crafted prompts across 63 research papers to extract causal relationships with evidence",
+                "Built a validation script that cleansed extracted PDF text, which is used to verify LLM generated excerpts verbatim against source documents",
+                "Implemented batch processing with incremental backups, increasing error tolerance and allowing resume on failure across long API jobs"
+            ]
+        },
+        {
+            id: 2,
             time: "June 2025 - Present",
             title: "Software Engineer",
             organization: "UCLA Department of Civil Engineering",
@@ -18,7 +31,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 2,
+            id: 3,
             time: "Mar 2025 - Present",
             title: "Lead Fullstack Developer",
             organization: "ClubhouseUCLA",
@@ -31,7 +44,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 3,
+            id: 4,
             time: "Mar 2025 - Jun 2025",
             title: "Learning Assistant",
             organization: "UCLA Department of Computer Science",
@@ -44,7 +57,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 4,
+            id: 5,
             time: "Jan 2025 - Present",
             title: "Undergraduate Researcher",
             organization: "UCLA Department of Mathematics Lab",
@@ -56,7 +69,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 5,
+            id: 6,
             time: "Oct 2024 - May 2025",
             title: "Fullstack Developer",
             organization: "Creative Labs | Algoace",
@@ -69,7 +82,7 @@ const ExperienceSection = () => {
 
         },
         {
-            id: 6,
+            id: 7,
             time: "Sep 2024 - Jan 2025",
             title: "Undergraduate Researcher",
             organization: "Elegant Mind Lab UCLA",
