@@ -4,7 +4,7 @@ export function Header() {
     };
 
     return (
-        <div className="flex justify-center sticky top-0 z-50 bg-gray-900">
+        <div id="main-header" className="flex justify-center sticky top-0 z-50 bg-gray-900">
             <header className="w-7/10 mt-6 mb-2">
                 <div className="px-6 py-4">
                     <div className="grid grid-cols-12 items-center">

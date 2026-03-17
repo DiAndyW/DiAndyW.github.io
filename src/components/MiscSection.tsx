@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 
 interface BaseCard {
     id: number;
@@ -25,6 +25,9 @@ interface ImageCard extends BaseCard {
 type CardContent = TextCard | ImageCard;
 
 const MiscSection: React.FC = () => {
+    const [flippedCard, setFlippedCard] = useState<number | null>(null);
+    const isTouchDevice = useRef(false);
+
     const Content: CardContent[] = [
         {
             id: 1,
@@ -59,15 +62,15 @@ const MiscSection: React.FC = () => {
             id: 3,
             type: 'text',
             title: "What's been on repeat",
-            frontImage: "🎵",
+            frontImage: "",
             frontText: "",
             backContent: {
                 title: "Can't get 'em out of my head!",
                 facts: [
-                    "Laufey - A Matter of Time",
-                    "Daniel Caeser - Who Knows",
-                    "Hu Xia - 那些年",
-                    "YOASOBI - 海のまにまに"
+                    "Laufey - Night Light",
+                    "Luke Chiang - me & u",
+                    "Jay Chou - 以父之名",
+                    "Lil Tecca - Dark Thoughts"
                 ]
             }
         }
@@ -85,32 +88,27 @@ const MiscSection: React.FC = () => {
 
                 <div className="flex flex-wrap gap-6 justify-center px-4">
                     {Content.map((item) => (
-                        <div 
-                            key={item.id} 
-                            className="group"
+                        <div
+                            key={item.id}
                             style={{ perspective: '1000px' }}
+                            onMouseEnter={() => { if (!isTouchDevice.current) setFlippedCard(item.id); }}
+                            onMouseLeave={() => { if (!isTouchDevice.current) setFlippedCard(null); }}
+                            onTouchStart={() => {
+                                isTouchDevice.current = true;
+                                setFlippedCard(flippedCard === item.id ? null : item.id);
+                            }}
                         >
-                            <div 
-                                className="relative w-64 h-80 transition-transform duration-800"
-                                style={{
-                                    transformStyle: 'preserve-3d',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.transform = 'rotateY(180deg)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'rotateY(0deg)';
-                                }}
-                                // touch support for mobile
-                                onTouchStart={(e) => {
-                                    e.currentTarget.style.transform = 'rotateY(180deg)';
-                                }}
+                            <div
+                                className="relative w-64 h-80"
+                                style={{ transformStyle: 'preserve-3d' }}
                             >
                                 {/* Front of card */}
-                                <div 
-                                    className="absolute inset-0 w-full h-full rounded-lg border border-white/30 border-2 bg-[#2d4a57]/20 backdrop-blur-sm p-6 flex flex-col items-center justify-center hover:shadow-lg transition-shadow duration-200"
+                                <div
+                                    className="absolute inset-0 w-full h-full rounded-lg border border-white/30 border-2 bg-[#2d4a57]/20 backdrop-blur-sm p-6 flex flex-col items-center justify-center"
                                     style={{
-                                        backfaceVisibility: 'hidden'
+                                        backfaceVisibility: 'hidden',
+                                        transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        transform: flippedCard === item.id ? 'rotateY(180deg)' : 'rotateY(0deg)',
                                     }}
                                 >
                                     {item.type === 'text' ? (
@@ -145,11 +143,12 @@ const MiscSection: React.FC = () => {
                                 </div>
 
                                 {/* Back of card */}
-                                <div 
+                                <div
                                     className="absolute inset-0 w-full h-full rounded-lg border border-white/30 border-2 bg-[#2d4a57]/20 backdrop-blur-sm p-6 flex flex-col justify-center"
                                     style={{
                                         backfaceVisibility: 'hidden',
-                                        transform: 'rotateY(180deg)'
+                                        transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        transform: flippedCard === item.id ? 'rotateY(0deg)' : 'rotateY(-180deg)',
                                     }}
                                 >
                                     <h3 className="text-xl font-bold text-white text-center mb-6">
@@ -158,7 +157,7 @@ const MiscSection: React.FC = () => {
                                     <div className="space-y-3">
                                         {item.backContent.facts.map((fact, index) => (
                                             <div key={index} className="text-white flex items-start">
-                                                <span className="mr-2">•</span>
+                                                <span className="mr-2 text-sm">•</span>
                                                 <span className="text-sm">{fact}</span>
                                             </div>
                                         ))}

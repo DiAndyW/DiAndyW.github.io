@@ -7,6 +7,24 @@ import { FriendsSection } from './components/FriendsSection';
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 
+const smoothScrollTo = (targetY: number, duration = 1000) => {
+  const startY = window.scrollY;
+  const diff = targetY - startY;
+  let start: number | null = null;
+
+  const ease = (t: number) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  const step = (timestamp: number) => {
+    if (!start) start = timestamp;
+    const progress = Math.min((timestamp - start) / duration, 1);
+    window.scrollTo(0, startY + diff * ease(progress));
+    if (progress < 1) requestAnimationFrame(step);
+  };
+
+  requestAnimationFrame(step);
+};
+
 interface NavItem {
   id: string;
   label: string;
@@ -158,11 +176,19 @@ function App() {
             <ul className="space-y-1 sm:space-y-2">
               {navItems.map((item) => (
                 <li key={item.id}>
-                  <a 
+                  <a
                     href={`#${item.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const el = document.getElementById(item.id);
+                      if (el) {
+                        const headerHeight = document.getElementById('main-header')?.offsetHeight ?? 0;
+                        smoothScrollTo(el.getBoundingClientRect().top + window.scrollY - headerHeight);
+                      }
+                    }}
                     className={`hover:text-[#5d97b3] transition-all duration-200 block
-                      ${activeSection === item.id 
-                        ? 'font-bold text-[#5d97b3]' 
+                      ${activeSection === item.id
+                        ? 'font-bold text-[#5d97b3]'
                         : ''}
                       text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl
                       leading-tight
