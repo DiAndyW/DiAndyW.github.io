@@ -18,13 +18,13 @@ export function Header() {
                         </div>
                             
                         <div className="col-span-6 flex items-center justify-end gap-3">
-                            <a href='https://github.com/DiAndyW' className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                            <a href='https://github.com/DiAndyW' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                                 <img src='/assets/github-white.svg' className="w-8" alt="GitHub" />
                             </a>
-                            <a href='https://www.linkedin.com/in/di-xuan-wang/' className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                            <a href='https://www.linkedin.com/in/di-xuan-wang/' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                                 <img src='/assets/InBug-White.png' className="w-9" alt="LinkedIn" />
                             </a>
-                            <a href='/assets/Andy_Wang_Resume.pdf' className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                            <a href='/assets/Andy_Wang_Resume.pdf' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
                                 <img src='/assets/icons-resume.png' alt='Resume' className="w-9" />
                             </a>
                             <a href='mailto:andy.dxwang@gmail.com' className="p-2 hover:bg-white/10 rounded-lg transition-colors">

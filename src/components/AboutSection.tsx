@@ -13,7 +13,7 @@ export function AboutSection() {
                 </p>
                 <p className="text-l p-4 pt-2">
                 I'm currently a third year undergrad at UCLA. Throughout my time here, I've worked on several projects, with my most recent being 
-                <a href="https://www.clubhouseucla.com/" className="underline ml-1 text-[#5d97b3] hover:text-[#7bb3d1]">ClubHouse</a>
+                <a href="https://www.clubhouseucla.com/" target="_blank" rel="noopener noreferrer" className="underline ml-1 text-[#5d97b3] hover:text-[#7bb3d1]">ClubHouse</a>
                 , which helps UCLA
                 students discover new clubs and rate clubs they're in! 
                 </p>
