@@ -6,6 +6,7 @@ import ExperienceSection from "../components/ExperienceSection";
 import ProjectSection from "../components/ProjectSection";
 import MiscSection from "../components/MiscSection";
 import { FriendsSection } from '../components/FriendsSection';
+import SpotifySection from '../components/SpotifySection';
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 
@@ -151,6 +152,7 @@ export default function Home() {
     { id: 'experience', label: 'Experience' },
     { id: 'projects', label: 'Projects' },
     { id: 'misc', label: 'Misc' },
+    { id: 'music', label: 'Music' },
     { id: 'friends', label: 'Friends' },
   ];
 
@@ -214,6 +216,9 @@ export default function Home() {
             </section>
             <section id="misc">
               <MiscSection />
+            </section>
+            <section id="music">
+              <SpotifySection />
             </section>
             <section id="friends">
               <FriendsSection />
