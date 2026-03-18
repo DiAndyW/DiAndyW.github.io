@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react';
 import { AboutSection } from "../components/AboutSection";
 import ExperienceSection from "../components/ExperienceSection";
 import ProjectSection from "../components/ProjectSection";
-import MiscSection from "../components/MiscSection";
 import { FriendsSection } from '../components/FriendsSection';
-import SpotifySection from '../components/SpotifySection';
+import InterestsSection from '../components/InterestsSection';
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 
@@ -151,8 +150,7 @@ export default function Home() {
     { id: 'about', label: 'About' },
     { id: 'experience', label: 'Experience' },
     { id: 'projects', label: 'Projects' },
-    { id: 'misc', label: 'Misc' },
-    { id: 'music', label: 'Music' },
+    { id: 'interests', label: 'Interests' },
     { id: 'friends', label: 'Friends' },
   ];
 
@@ -214,11 +212,8 @@ export default function Home() {
             <section id="projects">
               <ProjectSection />
             </section>
-            <section id="misc">
-              <MiscSection />
-            </section>
-            <section id="music">
-              <SpotifySection />
+            <section id="interests">
+              <InterestsSection />
             </section>
             <section id="friends">
               <FriendsSection />
