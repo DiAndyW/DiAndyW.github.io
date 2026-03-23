@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import SpotifySection from './SpotifySection';
+import GamingSection from './GamingSection';
 
 const TABS = [
   { id: 'music', label: 'Music' },
@@ -147,11 +148,7 @@ const InterestsSection: React.FC = () => {
           >
             {tab.id === 'music' && <SpotifySection />}
 
-            {tab.id === 'gaming' && (
-              <div className="px-4 py-4 text-white/50 text-sm">
-                Coming soon — stay tuned!
-              </div>
-            )}
+            {tab.id === 'gaming' && <GamingSection />}
 
             {tab.id === 'cooking' && (
               <div className="px-4 py-4 text-white/50 text-sm">

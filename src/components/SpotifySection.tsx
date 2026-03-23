@@ -66,7 +66,7 @@ const SpotifySection: React.FC = () => {
                   rel="noopener noreferrer"
                   className="group flex items-center gap-3 w-48 flex-shrink-0"
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/10 group-hover:border-[#7bb3d1] transition-colors duration-200 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 group-hover:border-[#7bb3d1] transition-colors duration-200 flex-shrink-0">
                     {artist.image ? (
                       <img src={artist.image} alt={artist.name} className="w-full h-full object-cover" />
                     ) : (
@@ -86,7 +86,7 @@ const SpotifySection: React.FC = () => {
                   href={track.spotifyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-3 flex-1 min-w-0 bg-[#2d4a57]/20 hover:bg-[#2d4a57]/40 border border-white/10 rounded-lg px-3 py-2 transition-colors duration-200"
+                  className="group flex items-center gap-3 flex-1 min-w-0 bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 border-2 border-white/30 hover:border-[#7bb3d1] rounded-lg px-3 py-2 transition-all duration-300"
                 >
                   {track.albumArt && (
                     <img src={track.albumArt} alt={track.name} className="w-8 h-8 rounded flex-shrink-0 object-cover" />
