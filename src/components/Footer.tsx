@@ -4,15 +4,18 @@ export function Footer() {
             <div className="text-center text-sm sm:text-base max-w-md">
                 <p>
                     You've reached the bottom. Thanks for visiting! Check out my
-                    <a 
-                        href="/assets/Andy_Wang_Resume.pdf" 
-                        target="_blank" 
+                    <a
+                        href="/assets/Andy_Wang_Resume.pdf"
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="mx-1 text-[#5d97b3] hover:text-[#7bb3d1] transition-colors underline"
-                    > 
-                        resume 
+                    >
+                        resume
                     </a>
                     if you'd like.
+                </p>
+                <p className="mt-4 text-gray-400 text-xs">
+                    © {new Date().getFullYear()} Andy Wang. All rights reserved.
                 </p>
             </div>
         </div>
