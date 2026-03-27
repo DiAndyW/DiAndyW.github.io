@@ -46,7 +46,7 @@ const FoodSection: React.FC = () => {
   return (
     <div className="mt-4 font-normal">
       <h2 className="text-white mb-6 px-4">Good food I've enjoyed</h2>
-      <div className="columns-2 gap-4 px-4 max-w-[75%]">
+      <div className="columns-3 gap-4 px-4 max-w-[100%]">
         {dishes.map((dish) => (
           <div
             key={dish.id}
