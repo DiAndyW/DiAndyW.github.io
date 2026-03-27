@@ -117,6 +117,7 @@ default:  bg-[#2d4a57]/20  border-white/30  shadow-sm
 hover:    bg-[#7bb3d1]/20  border-[#7bb3d1] shadow-md
 ```
 - `transition-all duration-300` on all card transitions
+- **Only apply hover states to interactive cards** (links, clickable accordions). Static display cards (no click/nav action) should use the default surface style with no hover — hover implies interactivity.
 
 ### Links
 - Color: `text-[#5d97b3]`
