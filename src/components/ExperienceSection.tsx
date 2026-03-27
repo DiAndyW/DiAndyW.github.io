@@ -104,12 +104,12 @@ const ExperienceSection = () => {
             <h1 className="text-3xl sm:text-4xl lg:text-5xl p-2 sm:p-4">
                 Experience
             </h1>
-            <h2 className="p-2 sm:p-4">
+            <div className="p-2 sm:p-4">
                 <div className="max-w-4xl mx-auto p-3 sm:p-6">
                     {/* Mobile Layout */}
                     <div className="block sm:hidden space-y-3">
                         {Content.map((item) => (
-                            <div key={item.id} className="border border-2 border-white/30 rounded-lg overflow-hidden">
+                            <div key={item.id} className="border-2 border-white/30 rounded-lg overflow-hidden">
                                 <button
                                     onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
                                     className="w-full p-3 text-left bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 transition-colors duration-300 cursor-pointer"
@@ -133,7 +133,7 @@ const ExperienceSection = () => {
                                 <div 
                                     className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                         selectedItem === item.id 
-                                            ? 'max-h-96 opacity-100' 
+                                            ? 'max-h-[500px] opacity-100' 
                                             : 'max-h-0 opacity-0'
                                     }`}
                                 >
@@ -151,7 +151,7 @@ const ExperienceSection = () => {
                                         {/* Technologies */}
                                         <div className="flex flex-wrap gap-1">
                                             {item.technologies.map(technology => (
-                                                <div key={technology} className="border border-2 border-white/30 rounded-full text-xs px-2 py-1">
+                                                <div key={technology} className="border-2 border-white/30 rounded-full text-xs px-2 py-1">
                                                     {technology}
                                                 </div>
                                             ))}
@@ -198,7 +198,7 @@ const ExperienceSection = () => {
                                         </div>
 
                                         {/* Description Card */}
-                                        <div className="sm:col-span-4 sm:col-end-7 border border-2 border-white/30 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 hover:border-[#7bb3d1] transition-all duration-300 cursor-pointer" 
+                                        <div className="sm:col-span-4 sm:col-end-7 border-2 border-white/30 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 hover:border-[#7bb3d1] transition-all duration-300 cursor-pointer" 
                                             onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
                                         >
                                             <h3 className="font-bold mb-2 text-lg sm:text-xl">
@@ -214,7 +214,7 @@ const ExperienceSection = () => {
                                             {/* Technologies */}
                                             <div className="flex flex-wrap gap-1 sm:gap-2">
                                                 {item.technologies.map(technology => (
-                                                    <div key={technology} className="border border-2 border-white/30 rounded-full text-xs sm:text-sm px-2 sm:px-3 py-1">
+                                                    <div key={technology} className="border-2 border-white/30 rounded-full text-xs sm:text-sm px-2 sm:px-3 py-1">
                                                         {technology}
                                                     </div>
                                                 ))}
@@ -224,7 +224,7 @@ const ExperienceSection = () => {
                                             <div 
                                                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                                     selectedItem === item.id 
-                                                        ? 'max-h-96 opacity-100' 
+                                                        ? 'max-h-[500px] opacity-100' 
                                                         : 'max-h-0 opacity-0'
                                                 }`}
                                             >
@@ -257,7 +257,7 @@ const ExperienceSection = () => {
                         ))}
                     </div>
                 </div>
-            </h2>
+            </div>
         </div>
     </div>
 );
