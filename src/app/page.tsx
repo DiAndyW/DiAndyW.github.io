@@ -114,6 +114,20 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
               {item.label}
             </button>
           ))}
+          <div className="flex items-center justify-center gap-3 pt-2 border-t border-white/10">
+            <a href='https://github.com/DiAndyW' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <img src='/assets/github-white.svg' className="w-6" alt="GitHub" />
+            </a>
+            <a href='https://www.linkedin.com/in/di-xuan-wang/' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <img src='/assets/InBug-White.png' className="w-6" alt="LinkedIn" />
+            </a>
+            <a href='/assets/Andy_Wang_Resume.pdf' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <img src='/assets/icons-resume.png' className="w-6" alt="Resume" />
+            </a>
+            <a href='mailto:andy.dxwang@gmail.com' className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <img src='/assets/mail-svgrepo-com.svg' className="w-6" alt="Email" />
+            </a>
+          </div>
         </div>
       </div>
     </div>
