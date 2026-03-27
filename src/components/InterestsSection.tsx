@@ -3,11 +3,12 @@
 import React, { useState, useRef } from 'react';
 import SpotifySection from './SpotifySection';
 import GamingSection from './GamingSection';
+import FoodSection from './FoodSection';
 
 const TABS = [
   { id: 'music', label: 'Music' },
   { id: 'gaming', label: 'Gaming' },
-  { id: 'cooking', label: 'Cooking' },
+  { id: 'food', label: 'Food' },
   { id: 'misc', label: 'Misc' },
 ] as const;
 
@@ -150,11 +151,7 @@ const InterestsSection: React.FC = () => {
 
             {tab.id === 'gaming' && <GamingSection />}
 
-            {tab.id === 'cooking' && (
-              <div className="px-4 py-4 text-white/50 text-sm">
-                Coming soon — stay tuned!
-              </div>
-            )}
+            {tab.id === 'food' && <FoodSection />}
 
             {tab.id === 'misc' && (
               <div>
