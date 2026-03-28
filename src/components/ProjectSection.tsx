@@ -66,7 +66,7 @@ const ProjectSection = () => {
                 {/* Mobile Layout */}
                 <div className="block sm:hidden space-y-3">
                     {Content.map((item) => (
-                        <div key={item.id} className="border border-2 border-white/30 rounded-lg overflow-hidden">
+                        <div key={item.id} className="border-2 border-white/30 rounded-lg overflow-hidden">
                             <div 
                                 className="bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 transition-colors duration-300 p-3 cursor-pointer"
                                 onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
@@ -98,7 +98,7 @@ const ProjectSection = () => {
                             <div 
                                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                     selectedItem === item.id 
-                                        ? 'max-h-96 opacity-100' 
+                                        ? 'max-h-[500px] opacity-100' 
                                         : 'max-h-0 opacity-0'                               
                                 }`}
                             >
@@ -117,7 +117,7 @@ const ProjectSection = () => {
                                         {item.technologies.map((technology, index) => (
                                             <span 
                                                 key={index}
-                                                className="text-white border border-2 border-white/30 rounded-full text-xs px-2 py-1"
+                                                className="text-white border-2 border-white/30 rounded-full text-xs px-2 py-1"
                                             >
                                                 {technology}
                                             </span>
@@ -145,7 +145,7 @@ const ProjectSection = () => {
                     {Content.map((item) => (
                         <div 
                             key={item.id} 
-                            className="bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 border border-2 border-white/30 rounded-lg my-4 sm:my-6 lg:my-8 p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:border-[#7bb3d1]"
+                            className="bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 border-2 border-white/30 rounded-lg my-4 sm:my-6 lg:my-8 p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:border-[#7bb3d1]"
                             onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
                         >
                             {/* Header */}
@@ -173,7 +173,7 @@ const ProjectSection = () => {
                                 {item.technologies.map((technology, index) => (
                                     <span 
                                         key={index}
-                                        className="text-white border border-2 border-white/30 rounded-full text-xs sm:text-sm px-2 sm:px-3 py-1"
+                                        className="text-white border-2 border-white/30 rounded-full text-xs sm:text-sm px-2 sm:px-3 py-1"
                                     >
                                         {technology}
                                     </span>
@@ -184,7 +184,7 @@ const ProjectSection = () => {
                             <div 
                                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                     selectedItem === item.id 
-                                        ? 'max-h-96 opacity-100' 
+                                        ? 'max-h-[500px] opacity-100' 
                                         : 'max-h-0 opacity-0'                               
                                 }`}
                             >

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 interface DishCard {
   id: number;
@@ -43,14 +43,19 @@ const dishes: DishCard[] = [
 ];
 
 const FoodSection: React.FC = () => {
+  const [activeId, setActiveId] = useState<number | null>(null);
+
   return (
     <div className="mt-4 font-normal">
       <h2 className="text-white mb-6 px-4">Good food I've enjoyed</h2>
-      <div className="columns-3 gap-4 px-4 max-w-[100%]">
+      <div className="columns-2 gap-3 px-4">
         {dishes.map((dish) => (
           <div
             key={dish.id}
-            className="group relative mb-4 break-inside-avoid rounded-lg overflow-hidden border-2 border-white/30 hover:border-[#7bb3d1] transition-colors duration-300"
+            onClick={() => setActiveId(activeId === dish.id ? null : dish.id)}
+            className={`group relative mb-4 break-inside-avoid rounded-lg overflow-hidden border-2 transition-colors duration-300 cursor-pointer ${
+              activeId === dish.id ? 'border-[#7bb3d1]' : 'border-white/30 hover:border-[#7bb3d1]'
+            }`}
           >
             {/* Image */}
             <img
@@ -59,10 +64,12 @@ const FoodSection: React.FC = () => {
               className="w-full h-auto block"
             />
 
-            {/* Hover overlay */}
-            <div className="absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-in-out bg-[#1a2f3a]/90 backdrop-blur-sm p-3">
-              <p className="text-white text-sm font-semibold">{dish.name}</p>
-              <p className="text-white/60 text-xs mt-1 leading-relaxed">{dish.description}</p>
+            {/* Overlay — hover on desktop, click on mobile */}
+            <div className={`absolute inset-x-0 bottom-0 transition-transform duration-300 ease-in-out bg-[#1a2f3a]/90 backdrop-blur-sm p-3 ${
+              activeId === dish.id ? 'translate-y-0' : 'translate-y-full group-hover:translate-y-0'
+            }`}>
+              <p className="text-white text-xs sm:text-sm font-semibold">{dish.name}</p>
+              <p className="text-white/60 text-[10px] sm:text-xs mt-1 leading-relaxed">{dish.description}</p>
             </div>
           </div>
         ))}
