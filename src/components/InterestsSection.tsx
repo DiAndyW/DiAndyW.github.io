@@ -42,10 +42,11 @@ const FlipCards: React.FC = () => {
   const isTouch = useRef(false);
 
   return (
-    <div className="grid grid-cols-2 gap-4 px-4 py-4">
+    <div className="flex flex-wrap justify-center gap-4 sm:gap-6 px-4 py-4">
       {miscCards.map((card) => (
         <div
           key={card.id}
+          className="w-[calc(50%-0.5rem)] sm:w-64"
           style={{ perspective: '1000px' }}
           onMouseEnter={() => { if (!isTouch.current) setFlipped(card.id); }}
           onMouseLeave={() => { if (!isTouch.current) setFlipped(null); }}
