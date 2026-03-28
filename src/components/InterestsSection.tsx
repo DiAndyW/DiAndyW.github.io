@@ -42,7 +42,7 @@ const FlipCards: React.FC = () => {
   const isTouch = useRef(false);
 
   return (
-    <div className="flex flex-wrap gap-6 justify-center px-4 py-4">
+    <div className="grid grid-cols-2 gap-4 px-4 py-4">
       {miscCards.map((card) => (
         <div
           key={card.id}
@@ -54,10 +54,10 @@ const FlipCards: React.FC = () => {
             setFlipped(flipped === card.id ? null : card.id);
           }}
         >
-          <div className="relative w-64 h-80" style={{ transformStyle: 'preserve-3d' }}>
+          <div className="relative w-full aspect-[4/5]" style={{ transformStyle: 'preserve-3d' }}>
             {/* Front */}
             <div
-              className="absolute inset-0 rounded-lg border-2 border-white/30 bg-[#2d4a57]/20 backdrop-blur-sm p-6 flex flex-col items-center justify-center"
+              className="absolute inset-0 rounded-lg border-2 border-white/30 bg-[#2d4a57]/20 backdrop-blur-sm p-3 sm:p-6 flex flex-col items-center justify-center"
               style={{
                 backfaceVisibility: 'hidden',
                 transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -66,8 +66,8 @@ const FlipCards: React.FC = () => {
             >
               {card.type === 'text' ? (
                 <>
-                  <div className="text-6xl mb-4">{card.frontDisplay}</div>
-                  <h3 className="text-xl font-bold text-white text-center">{card.title}</h3>
+                  <div className="text-4xl sm:text-6xl mb-2 sm:mb-4">{card.frontDisplay}</div>
+                  <h3 className="text-sm sm:text-xl font-bold text-white text-center">{card.title}</h3>
                 </>
               ) : (
                 <div className="absolute inset-0">
@@ -78,7 +78,7 @@ const FlipCards: React.FC = () => {
 
             {/* Back */}
             <div
-              className="absolute inset-0 rounded-lg border-2 border-white/30 bg-[#2d4a57]/20 backdrop-blur-sm p-6 flex flex-col justify-center"
+              className="absolute inset-0 rounded-lg border-2 border-white/30 bg-[#2d4a57]/20 backdrop-blur-sm p-3 sm:p-6 flex flex-col justify-center"
               style={{
                 backfaceVisibility: 'hidden',
                 transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -86,13 +86,13 @@ const FlipCards: React.FC = () => {
               }}
             >
               {card.backTitle && (
-                <h3 className="text-xl font-bold text-white text-center mb-6">{card.backTitle}</h3>
+                <h3 className="text-sm sm:text-xl font-bold text-white text-center mb-3 sm:mb-6">{card.backTitle}</h3>
               )}
-              <div className="space-y-3">
+              <div className="space-y-1.5 sm:space-y-3">
                 {card.facts.map((fact, i) => (
                   <div key={i} className="text-white flex items-start">
-                    <span className="mr-2 text-sm">•</span>
-                    <span className="text-sm">{fact}</span>
+                    <span className="mr-1.5 text-xs sm:text-sm">•</span>
+                    <span className="text-xs sm:text-sm">{fact}</span>
                   </div>
                 ))}
               </div>

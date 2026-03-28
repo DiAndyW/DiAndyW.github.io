@@ -64,7 +64,7 @@ const SpotifySection: React.FC = () => {
                   href={artist.spotifyUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-3 w-48 flex-shrink-0"
+                  className="group flex items-center gap-3 w-32 sm:w-48 flex-shrink-0"
                 >
                   <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/30 group-hover:border-[#7bb3d1] transition-colors duration-200 flex-shrink-0">
                     {artist.image ? (

@@ -50,7 +50,7 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
   };
 
   return (
-    <div className="fixed top-6 left-6 z-50 md:hidden">
+    <div className="fixed top-6 left-6 z-50 md:hidden pointer-events-none">
       {/* Backdrop */}
       {isExpanded && (
         <div
@@ -65,7 +65,7 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
         className={`
           w-14 h-14 bg-[#2d4a57]/80 text-white rounded-full shadow-lg
           transition-all duration-300 hover:scale-110 active:scale-95
-          flex items-center justify-center mt-3
+          flex items-center justify-center mt-3 pointer-events-auto
           hover:bg-[#5d97b3]/80 focus:outline-none focus:ring-2 focus:ring-[#7bb3d1]
           ${isExpanded ? 'rotate-0 bg-[#5d97b3]' : 'rotate-0'}
         `}
@@ -89,7 +89,7 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
       </button>
 
       {/* Navigation Items */}
-      <div className={`relative mt-4 transition-all duration-300 ${
+      <div className={`relative mt-4 transition-all duration-300 pointer-events-auto ${
         isExpanded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
       }`}>
         <div className="bg-gray-800 border border-[#7bb3d1] rounded-lg p-4 space-y-3">
