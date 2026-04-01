@@ -29,6 +29,11 @@ export function FriendsSection() {
             id: 6,
             name: "Kenny Guo",
             link: "https://kguo12.github.io/kennyguowebpage/",
+        },
+        {
+            id: 7,
+            name: "Charles Zhu",
+            link: "https://charles-portfolio-delta.vercel.app/"
         }
     ]
 
