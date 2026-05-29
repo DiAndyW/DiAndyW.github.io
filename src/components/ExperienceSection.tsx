@@ -8,6 +8,17 @@ const ExperienceSection = () => {
     const Content = [
         {
             id: 1,
+            time: "May 2026 - Present",
+            title: "DevOps Intern",
+            organization: "UCLA Student Media",
+            technologies: ['JavaScript', 'React'],
+            description: "coming soon...",
+            points: [
+                "coming soon..."
+            ]
+        },
+        {
+            id: 2,
             time: "Nov 2025 - Present",
             title: "Undergraduate Researcher",
             organization: "The B. John Garrick Institute for the Risk Sciences at UCLA",
@@ -20,7 +31,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 2,
+            id: 3,
             time: "June 2025 - Present",
             title: "Software Engineer",
             organization: "UCLA Department of Civil Engineering",
@@ -33,7 +44,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 3,
+            id: 4,
             time: "Mar 2025 - Present",
             title: "Lead Fullstack Developer",
             organization: "ClubhouseUCLA",
@@ -46,7 +57,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 4,
+            id: 5,
             time: "Mar 2025 - Jun 2025",
             title: "Learning Assistant",
             organization: "UCLA Department of Computer Science",
@@ -59,8 +70,8 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 5,
-            time: "Jan 2025 - Present",
+            id: 6,
+            time: "Jan 2025 - Jan 2026",
             title: "Undergraduate Researcher",
             organization: "UCLA Department of Mathematics Lab",
             technologies: [],
@@ -71,7 +82,7 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 6,
+            id: 7,
             time: "Oct 2024 - May 2025",
             title: "Fullstack Developer",
             organization: "Creative Labs | Algoace",
@@ -84,7 +95,7 @@ const ExperienceSection = () => {
 
         },
         {
-            id: 7,
+            id: 8,
             time: "Sep 2024 - Jan 2025",
             title: "Undergraduate Researcher",
             organization: "Elegant Mind Lab UCLA",
