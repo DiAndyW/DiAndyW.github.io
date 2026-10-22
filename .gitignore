@@ -10,3 +10,8 @@
 /.next
 
 .env
+# superpowers planning artifacts, mockups, and local tool output
+.superpowers/
+docs/superpowers/
+.playwright-mcp/
+.cache/

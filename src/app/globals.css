@@ -12,3 +12,27 @@ body {
     color-scheme: dark;
   }
 }
+
+/* Globe intro: hidden unless the <head> gate script marks this visit to play it */
+.intro-overlay {
+  display: none;
+}
+
+html[data-intro="play"] .intro-overlay {
+  display: flex;
+}
+
+html[data-intro="play"] {
+  overflow: hidden;
+}
+
+/* Fade the globe in from first paint, so a slow JS download shows the globe rather than a blank screen */
+.intro-globe {
+  animation: intro-globe-in 300ms ease-out both;
+}
+
+@keyframes intro-globe-in {
+  from {
+    opacity: 0;
+  }
+}
