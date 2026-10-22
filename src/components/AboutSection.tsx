@@ -11,10 +11,10 @@ export function AboutSection() {
                 Some industries I'm interested in are the environment, biotech, and education. I strive to build things that make a meaningful difference in the world.
                 </p>
                 <p className="text-base sm:text-lg p-4 pt-2">
-                I'm currently a third year undergrad at UCLA. Throughout my time here, I've worked on several projects, with my most recent being
-                <a href="https://www.clubhousebruins.com/" target="_blank" rel="noopener noreferrer" className="underline ml-1 text-[#5d97b3] hover:text-[#7bb3d1]">ClubHouse</a>
-                , which helps UCLA
-                students discover new clubs and rate clubs they're in!
+                I'm currently a fourth year undergrad at UCLA. This past summer, I was a Software Engineering Intern at Microsoft, where I built an
+                AI-assisted platform that turns Kubernetes security scan findings into actionable risk assessments. On the side, I've been building
+                Mosaic, an iOS app where friend groups take on weekly photo challenges that come together into a shared photo mosaic. It's coming
+                soon to the App Store!
                 </p>
                 <p className="text-base sm:text-lg p-4 pt-2">
                 When I'm not working, you can catch me going on a run after the gym, playing video games, playing piano, chefing up in the kitchen,

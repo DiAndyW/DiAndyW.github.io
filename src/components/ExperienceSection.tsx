@@ -2,16 +2,36 @@
 
 import React, { useState } from 'react';
 
+type Category = 'swe' | 'ai' | 'teaching';
+
+const CATEGORIES: { id: Category; label: string; short: string }[] = [
+    { id: 'swe', label: 'Software Engineering', short: 'SWE' },
+    { id: 'ai', label: 'AI/ML & Research', short: 'AI/ML' },
+    { id: 'teaching', label: 'Teaching', short: 'Teaching' },
+];
+
 const ExperienceSection = () => {
     const [selectedItem, setSelectedItem] = useState<number | null>(null);
+    const [category, setCategory] = useState<Category>('swe');
 
-    const Content = [
+    const Content: {
+        id: number;
+        time: string;
+        title: string;
+        organization: string;
+        category: Category;
+        technologies: string[];
+        description: string;
+        link?: string;
+        points: string[];
+    }[] = [
         {
             id: 1,
-            time: "May 2026 - Present",
-            title: "DevOps Intern",
-            organization: "UCLA Student Media",
-            technologies: ['JavaScript', 'React'],
+            time: "Oct 2026 - Present",
+            title: "Software Developer",
+            organization: "LA Blueprint",
+            category: 'swe',
+            technologies: [],
             description: "coming soon...",
             points: [
                 "coming soon..."
@@ -19,9 +39,36 @@ const ExperienceSection = () => {
         },
         {
             id: 2,
+            time: "Jun 2026 - Sep 2026",
+            title: "Software Engineering Intern",
+            organization: "Microsoft",
+            category: 'swe',
+            technologies: ['Go', 'Kubernetes', 'Azure', 'Microsoft Foundry', 'Linux'],
+            description: "Built an AI-assisted Kubernetes security posture platform that transforms security scan findings into actionable risk assessments and remediation guidance, helping users identify security issues in offline environments",
+            points: [
+                "Reduced ungrounded AI-generated security guidance by 91% through model evaluation on Microsoft Foundry and architecture redesign, improving the reliability of automated security analysis",
+                "Developed a modular Go-based security evaluation CLI with scanner orchestration and artifact management to automate Kubernetes and Linux security posture assessments",
+                "Authored the architecture and implementation plan for a new security evaluation capability, utilizing design reviews and incorporating cross-team feedback around security, scalability, and AI integration"
+            ]
+        },
+        {
+            id: 3,
+            time: "May 2026 - Present",
+            title: "DevOps Intern",
+            organization: "UCLA Student Media",
+            category: 'swe',
+            technologies: ['JavaScript', 'React'],
+            description: "coming soon...",
+            points: [
+                "coming soon..."
+            ]
+        },
+        {
+            id: 4,
             time: "Nov 2025 - Present",
             title: "Undergraduate Researcher",
             organization: "The B. John Garrick Institute for the Risk Sciences at UCLA",
+            category: 'ai',
             technologies: ['Python', 'LangChain', 'OpenAI API'],
             description: "Developed an LLM pipeline to extract and validate causal relationships between organizational factors and human performance from Human Reliability Analysis research literature",
             points: [
@@ -31,10 +78,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 3,
+            id: 5,
             time: "June 2025 - Present",
-            title: "Software Engineer",
+            title: "Software Developer",
             organization: "UCLA Department of Civil Engineering",
+            category: 'swe',
             technologies: ['React Native', 'Leaflet.js', 'Google Maps API', 'FastAPI', 'Firebase', 'Supabase'],
             description: "Built a weather-tracking platform enabling farmers to optimize irrigation through automated field analysis and forecasting crop water demand, providing future irrigation recommendations",
             points: [
@@ -44,10 +92,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 4,
+            id: 6,
             time: "Mar 2025 - Present",
             title: "Lead Fullstack Developer",
-            organization: "ClubhouseUCLA",
+            organization: "Clubhouse Bruins",
+            category: 'swe',
             technologies: ['React', 'Next.js', 'Vercel', 'Supabase', 'TailwindCSS'],
             description: "Built a website using Next.js and Vercel, helping students review and discover clubs, serving 500+ monthly users",
             link: "https://www.clubhouseucla.com/",
@@ -57,10 +106,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 5,
+            id: 7,
             time: "Mar 2025 - Jun 2025",
             title: "Learning Assistant",
             organization: "UCLA Department of Computer Science",
+            category: 'teaching',
             technologies: [],
             description: "Led discussions for 30+ students in a Data Structures & Algorithms course",
             points: [
@@ -70,10 +120,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 6,
+            id: 8,
             time: "Jan 2025 - Jan 2026",
             title: "Undergraduate Researcher",
             organization: "UCLA Department of Mathematics Lab",
+            category: 'ai',
             technologies: [],
             description: "Researched multi-agent reinforcement learning under information asymmetry, extending the DCM bandit model to support multiple clicks per session",
             points: [
@@ -82,10 +133,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 7,
+            id: 9,
             time: "Oct 2024 - May 2025",
             title: "Fullstack Developer",
             organization: "Creative Labs | Algoace",
+            category: 'swe',
             technologies: ['React Native', 'Java', 'Spring Boot', 'MongoDB', 'TailwindCSS'],
             description: "Worked with a 15 person team to build a gamified coding app helping software engineers enhance technical skills",
             points: [
@@ -95,10 +147,11 @@ const ExperienceSection = () => {
 
         },
         {
-            id: 8,
+            id: 10,
             time: "Sep 2024 - Jan 2025",
             title: "Undergraduate Researcher",
             organization: "Elegant Mind Lab UCLA",
+            category: 'ai',
             technologies: ['Python', 'ROS 2', 'Arduino'],
             description: "Assisted a 10-person team in developing autonomous surgery robots, focusing on robotic arm communication",
             points: [
@@ -109,17 +162,39 @@ const ExperienceSection = () => {
 
     ]
 
+    const visible = Content.filter((item) => item.category === category);
+
     return (
         <div className="flex items-center">
         <div className="mt-8 font-normal">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl p-2 sm:p-4">
                 Experience
             </h1>
+            <div className="flex flex-wrap gap-2 px-2 sm:px-4">
+                {CATEGORIES.map((c) => (
+                    <button
+                        key={c.id}
+                        aria-pressed={category === c.id}
+                        onClick={() => {
+                            setCategory(c.id);
+                            setSelectedItem(null);
+                        }}
+                        className={`rounded-full border-2 px-3 py-1 text-sm transition-colors duration-300 cursor-pointer ${
+                            category === c.id
+                                ? 'bg-[#5d97b3] border-[#7bb3d1] font-bold'
+                                : 'border-white/30 hover:bg-[#7bb3d1]/20'
+                        }`}
+                    >
+                        <span className="sm:hidden">{c.short}</span>
+                        <span className="hidden sm:inline">{c.label}</span>
+                    </button>
+                ))}
+            </div>
             <div className="p-2 sm:p-4">
                 <div className="max-w-4xl mx-auto p-3 sm:p-6">
                     {/* Mobile Layout */}
                     <div className="block sm:hidden space-y-3">
-                        {Content.map((item) => (
+                        {visible.map((item) => (
                             <div key={item.id} className="border-2 border-white/30 rounded-lg overflow-hidden">
                                 <button
                                     onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
@@ -144,7 +219,7 @@ const ExperienceSection = () => {
                                 <div 
                                     className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                         selectedItem === item.id 
-                                            ? 'max-h-[500px] opacity-100' 
+                                            ? 'max-h-[1000px] opacity-100' 
                                             : 'max-h-0 opacity-0'
                                     }`}
                                 >
@@ -195,7 +270,7 @@ const ExperienceSection = () => {
                             <div className="text-white text-sm ml-1">The journey continues...</div>
                         </div>
 
-                        {Content.map((item) => (
+                        {visible.map((item) => (
                             <div key={item.id} className="relative mb-6 sm:mb-10">
                                 {/* Timeline dot */}
                                 <div className="absolute left-[5px] sm:left-3 top-5 sm:top-6 w-3 h-3 bg-[#7bb3d1] rounded-full border-2 border-white z-10"></div>
@@ -235,7 +310,7 @@ const ExperienceSection = () => {
                                             <div 
                                                 className={`overflow-hidden transition-all duration-300 ease-in-out ${
                                                     selectedItem === item.id 
-                                                        ? 'max-h-[500px] opacity-100' 
+                                                        ? 'max-h-[1000px] opacity-100' 
                                                         : 'max-h-0 opacity-0'
                                                 }`}
                                             >
