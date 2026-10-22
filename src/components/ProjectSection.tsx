@@ -1,9 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
+import TechList from './TechList';
+
+// Matches the pop-up's fade/scale transition
+const DIALOG_MS = 300;
 
 const ProjectSection = () => {
-    const [selectedItem, setSelectedItem] = useState<number | null>(null);
+    const [openItem, setOpenItem] = useState<number | null>(null);
+    const [shown, setShown] = useState(false);
+    const dialogRef = useRef<HTMLDialogElement>(null);
+    const closeTimer = useRef(0);
 
     const Content: {
         id: number;
@@ -78,8 +85,29 @@ const ProjectSection = () => {
 
     const featured = Content.filter((item) => item.featured);
     const more = Content.filter((item) => !item.featured);
+    // Stays set while the pop-up fades out, so its content doesn't vanish mid-transition
+    const active = Content.find((item) => item.id === openItem);
 
-    const toggle = (id: number) => setSelectedItem(selectedItem === id ? null : id);
+    // Native <dialog> gives us the focus trap, Esc, and focus return to the clicked card
+    const openDetails = (id: number) => {
+        window.clearTimeout(closeTimer.current);
+        setOpenItem(id);
+        if (!dialogRef.current?.open) dialogRef.current?.showModal();
+        document.documentElement.style.overflow = 'hidden';
+        requestAnimationFrame(() => setShown(true));
+    };
+
+    const closeDetails = () => {
+        setShown(false);
+        closeTimer.current = window.setTimeout(() => {
+            dialogRef.current?.close();
+            document.documentElement.style.overflow = '';
+        }, DIALOG_MS);
+    };
+
+    const cardClass =
+        'w-full h-full text-left bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 border-2 border-white/30 hover:border-[#7bb3d1] rounded-lg transition-colors duration-300 cursor-pointer';
+    const labelClass = 'text-[#7bb3d1] text-xs uppercase tracking-widest font-bold mb-2';
 
     return (
         <div className="flex items-center">
@@ -89,149 +117,104 @@ const ProjectSection = () => {
             </h1>
 
             <div className="px-2 sm:px-4">
-                {/* Featured projects */}
+                {/* Featured projects: grid rows stretch, so the pair always matches in height */}
+                <div className={labelClass}>Featured</div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {featured.map((item) => (
-                        <div
+                        <button
                             key={item.id}
-                            className="bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 border-2 border-white/30 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer hover:border-[#7bb3d1] self-start"
-                            onClick={() => toggle(item.id)}
+                            type="button"
+                            onClick={() => openDetails(item.id)}
+                            className={`${cardClass} p-3 sm:p-4`}
                         >
-                            {/* Header */}
-                            <div className="flex justify-between items-start mb-1">
-                                <h3 className="font-bold text-lg sm:text-xl text-white">
-                                    {item.title}
-                                </h3>
-                                <div className="text-gray-400 text-lg font-light flex-shrink-0 ml-3">
-                                    {selectedItem === item.id ? '−' : '+'}
-                                </div>
-                            </div>
-
+                            <h3 className="font-bold text-lg sm:text-xl text-white">{item.title}</h3>
                             {item.organization && (
-                                <h4 className="font-semibold text-[#5d97b3] mb-2 text-sm sm:text-base">
-                                    {item.organization}
-                                </h4>
+                                <h4 className="font-semibold text-[#5d97b3] text-sm sm:text-base">{item.organization}</h4>
                             )}
-
-                            {/* Description */}
-                            <p className="text-white mb-3 leading-relaxed text-sm sm:text-base">
-                                {item.description}
-                            </p>
-
-                            {/* Technologies */}
-                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                                {item.technologies.map((technology, index) => (
-                                    <span
-                                        key={index}
-                                        className="text-white border-2 border-white/30 rounded-full text-xs sm:text-sm px-2 sm:px-3 py-1"
-                                    >
-                                        {technology}
-                                    </span>
-                                ))}
-                            </div>
-
-                            {/* Extended description */}
-                            <div
-                                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                                    selectedItem === item.id
-                                        ? 'max-h-[1000px] opacity-100'
-                                        : 'max-h-0 opacity-0'
-                                }`}
-                            >
-                                <div className="border-t pt-3 mt-3">
-                                    <div className="space-y-2 mb-3">
-                                        {item.points.map((point, index) => (
-                                            <div key={index} className="text-xs sm:text-sm text-white flex items-start">
-                                                <span className="pr-2 text-[#7bb3d1] flex-shrink-0">•</span>
-                                                <span>{point}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {item.link && (
-                                        <a
-                                            href={item.link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center text-xs sm:text-sm text-[#5d97b3] hover:text-[#7bb3d1] font-medium transition-colors duration-200 underline"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            View Project
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                            <p className="text-gray-200 mt-1 mb-3 leading-relaxed text-sm sm:text-base">{item.description}</p>
+                            <TechList technologies={item.technologies} className="text-xs sm:text-sm text-gray-400" />
+                        </button>
                     ))}
                 </div>
 
                 {/* More projects */}
-                <div className="text-[#7bb3d1] text-xs uppercase tracking-widest font-bold mt-6 mb-2">
-                    More projects
-                </div>
-                <div>
+                <div className={`${labelClass} mt-6`}>More projects</div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                     {more.map((item) => (
-                        <div
+                        <button
                             key={item.id}
-                            className="border-b border-white/15 py-3 px-1 cursor-pointer hover:bg-[#7bb3d1]/10 transition-colors duration-300"
-                            onClick={() => toggle(item.id)}
+                            type="button"
+                            onClick={() => openDetails(item.id)}
+                            className={`${cardClass} px-4 py-3.5`}
                         >
-                            <div className="flex justify-between items-baseline gap-3">
-                                <div className="min-w-0 sm:truncate">
-                                    <span className="font-bold text-white">{item.title}</span>
-                                    <span className="text-gray-300 text-sm"> · {item.description}</span>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0 text-sm text-gray-400">
-                                    <span className="hidden sm:inline">{item.technologies[0]}</span>
-                                    {item.link && (
-                                        <a
-                                            href={item.link}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            aria-label={`Open ${item.title}`}
-                                            className="text-[#5d97b3] hover:text-[#7bb3d1] transition-colors duration-200"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            ↗
-                                        </a>
-                                    )}
-                                    <span className="text-gray-400 font-light">
-                                        {selectedItem === item.id ? '−' : '+'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div
-                                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                                    selectedItem === item.id
-                                        ? 'max-h-[1000px] opacity-100'
-                                        : 'max-h-0 opacity-0'
-                                }`}
-                            >
-                                <div className="pt-3 space-y-1">
-                                    {item.points.map((point, index) => (
-                                        <div key={index} className="text-xs sm:text-sm text-gray-300 flex items-start">
-                                            <span className="pr-2 text-[#7bb3d1] flex-shrink-0">•</span>
-                                            <span>{point}</span>
-                                        </div>
-                                    ))}
-                                    <div className="flex flex-wrap gap-1.5 pt-2">
-                                        {item.technologies.map((technology, index) => (
-                                            <span
-                                                key={index}
-                                                className="text-white border-2 border-white/30 rounded-full text-xs px-2 py-1"
-                                            >
-                                                {technology}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            <h3 className="font-bold text-white mb-0.5">{item.title}</h3>
+                            <p className="text-gray-300 text-sm leading-relaxed">{item.description}</p>
+                        </button>
                     ))}
                 </div>
             </div>
         </div>
+
+        {/* Details pop-up; clicking the dimmed area around the panel closes it */}
+        <dialog
+            ref={dialogRef}
+            aria-labelledby="project-dialog-title"
+            onCancel={(e) => {
+                e.preventDefault();
+                closeDetails();
+            }}
+            onClick={(e) => {
+                if (e.target === e.currentTarget) closeDetails();
+            }}
+            className={`fixed inset-0 m-0 h-full max-h-none w-full max-w-none p-4 open:flex items-center justify-center bg-black/55 backdrop-blur-sm backdrop:bg-transparent transition-opacity duration-300 ${
+                shown ? 'opacity-100' : 'opacity-0'
+            }`}
+        >
+            {active && (
+                <div
+                    className={`relative w-full max-w-[620px] max-h-[85vh] overflow-y-auto bg-[#17232c] border-2 border-[#7bb3d1]/50 rounded-xl p-6 sm:p-7 text-white transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+                        shown ? 'translate-y-0 scale-100' : 'translate-y-2 scale-[0.97]'
+                    }`}
+                >
+                    <button
+                        type="button"
+                        aria-label="Close"
+                        autoFocus
+                        onClick={closeDetails}
+                        className="absolute top-4 right-4 w-8 h-8 grid place-items-center rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors duration-200 cursor-pointer"
+                    >
+                        ✕
+                    </button>
+
+                    <h3 id="project-dialog-title" className="font-bold text-xl sm:text-2xl pr-10">{active.title}</h3>
+                    {active.organization && (
+                        <p className="font-semibold text-[#5d97b3]">{active.organization}</p>
+                    )}
+                    <p className="leading-relaxed mt-3 mb-4">{active.description}</p>
+                    <div className="mb-4">
+                        {active.points.map((point, index) => (
+                            <div key={index} className="text-sm flex mb-1.5 leading-relaxed">
+                                <span className="pr-2 flex-shrink-0 text-white">•</span>
+                                <span>{point}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <TechList technologies={active.technologies} />
+
+                    {active.link && (
+                        <a
+                            href={active.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block mt-3 text-sm text-[#5d97b3] hover:text-[#7bb3d1] transition-colors duration-200 underline"
+                        >
+                            View Project
+                        </a>
+                    )}
+                </div>
+            )}
+        </dialog>
     </div>
     );
 }
