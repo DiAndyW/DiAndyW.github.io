@@ -4,7 +4,7 @@ export const INTRO_STORAGE_KEY = 'introSeen';
 export const INTRO_STARTED_FLAG = '__introStarted';
 
 // If the page JS hasn't started the intro by then (slow network), drop it rather than hold a dark screen.
-export const INTRO_START_DEADLINE_MS = 1500;
+export const INTRO_START_DEADLINE_MS = 2000;
 
 // Runs inline in <head> before first paint. Marks <html data-intro="play"> when the intro should show:
 // first visit this session, tab in the foreground, and no reduced-motion preference.

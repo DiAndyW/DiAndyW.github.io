@@ -65,7 +65,7 @@ const ExperienceSection = () => {
         },
         {
             id: 4,
-            time: "Nov 2025 - Present",
+            time: "Nov 2025 - Jun 2026",
             title: "Undergraduate Researcher",
             organization: "The B. John Garrick Institute for the Risk Sciences at UCLA",
             category: 'ai',
@@ -79,7 +79,7 @@ const ExperienceSection = () => {
         },
         {
             id: 5,
-            time: "June 2025 - Present",
+            time: "June 2025 - June 2026",
             title: "Software Developer",
             organization: "UCLA Department of Civil Engineering",
             category: 'swe',

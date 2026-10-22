@@ -31,7 +31,7 @@ const miscCards = [
   {
     id: 2,
     type: 'image' as const,
-    src: '/assets/rain.jpg',
+    src: '/assets/rain.webp',
     backTitle: 'Post Rain at UCLA',
     facts: ['I love rain'],
   },
@@ -72,7 +72,7 @@ const FlipCards: React.FC = () => {
                 </>
               ) : (
                 <div className="absolute inset-0">
-                  <img src={card.src} alt="Card" className="w-full h-full object-cover rounded-lg" />
+                  <img src={card.src} alt="Card" loading="lazy" className="w-full h-full object-cover rounded-lg" />
                 </div>
               )}
             </div>

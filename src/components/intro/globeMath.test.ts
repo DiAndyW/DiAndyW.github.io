@@ -1,38 +1,78 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MAP_W, LA, LA_TARGET_X, lonLatToMap, finalStripOffset, spinStartOffset } from './globeMath.ts';
+import {
+    LA,
+    SPIN,
+    ZOOM,
+    latLonToVector,
+    rotateX,
+    rotateY,
+    facingRotation,
+    cameraDistance,
+    timeline,
+    deepZoomFov,
+} from './globeMath.ts';
 
-const close = (a: number, b: number, eps = 0.01) =>
+const close = (a: number, b: number, eps = 1e-9) =>
     assert.ok(Math.abs(a - b) <= eps, `${a} not within ${eps} of ${b}`);
 
-test('lonLatToMap places LA', () => {
-    const { x, y } = lonLatToMap(LA.lon, LA.lat);
-    close(x, 34.31);
-    close(y, 31.08);
+test('latLonToVector follows the three.js sphere texture convention', () => {
+    const north = latLonToVector(90, 0);
+    close(north.y, 1);
+    const prime = latLonToVector(0, 0);
+    close(Math.hypot(prime.x, prime.y, prime.z), 1);
+    const left = latLonToVector(0, -180); // u = 0
+    close(left.x, -1);
+    close(left.z, 0, 1e-12);
 });
 
-test('lonLatToMap corners', () => {
-    assert.deepEqual(lonLatToMap(-180, 90), { x: 0, y: 0 });
-    assert.deepEqual(lonLatToMap(180, -90), { x: 200, y: 100 });
+test('facingRotation brings LA to face the camera at +Z', () => {
+    const v = latLonToVector(LA.lat, LA.lon);
+    const { x, y } = facingRotation(v);
+    const turned = rotateX(rotateY(v, y), x);
+    close(turned.x, 0, 1e-12);
+    close(turned.y, 0, 1e-12);
+    close(turned.z, 1, 1e-12);
 });
 
-test('finalStripOffset lands LA on its target', () => {
-    close(finalStripOffset(LA.lon, LA_TARGET_X), -196.31);
-});
-
-test('finalStripOffset is in (-MAP_W, 0] and hits the target mod MAP_W', () => {
-    for (const lon of [-180, -90, 0, 45, 179.9]) {
-        for (const targetX of [0, 38, 99]) {
-            const t = finalStripOffset(lon, targetX);
-            assert.ok(t > -MAP_W && t <= 0, `offset ${t} out of range`);
-            const r = (((lonLatToMap(lon, 0).x + t - targetX) % MAP_W) + MAP_W) % MAP_W;
-            assert.ok(r < 1e-9 || MAP_W - r < 1e-9, `residual ${r}`);
-        }
+test('facingRotation works for any point, including the southern and western hemispheres', () => {
+    for (const [lat, lon] of [[-33.9, 151.2], [51.5, -0.1], [0, 179], [-60, -70]]) {
+        const v = latLonToVector(lat, lon);
+        const { x, y } = facingRotation(v);
+        const turned = rotateX(rotateY(v, y), x);
+        close(turned.z, 1, 1e-12);
     }
 });
 
-test('spinStartOffset is one rotation behind and stays coverable by 3 strip copies', () => {
-    const f = finalStripOffset(LA.lon, LA_TARGET_X);
-    assert.equal(spinStartOffset(f), f - 200);
-    assert.ok(spinStartOffset(f) >= -400);
+test('cameraDistance frames the globe at the given fraction of the shorter side', () => {
+    const fov = 35;
+    const half = Math.tan((fov / 2) * (Math.PI / 180));
+    // landscape: height is the shorter side
+    const d = cameraDistance(fov, 16 / 9, 0.6);
+    close(2 / (2 * d * half), 0.6, 1e-12);
+    // portrait: width is the shorter side
+    const p = cameraDistance(fov, 9 / 16, 0.6);
+    close(2 / (2 * p * half * (9 / 16)), 0.6, 1e-12);
+});
+
+test('timeline uses the tuned spin, pause, zoom and cloud reveal', () => {
+    assert.deepEqual(SPIN, { ms: 1500, turns: 0.55, pauseMs: 500 });
+    assert.deepEqual(ZOOM, { ms: 1000, cloudsFrom: 0.5, coverAt: 0.9, revealMs: 400 });
+    assert.deepEqual(timeline(SPIN, ZOOM), {
+        spin: 1500,
+        tiltFrom: 600,
+        hold: 2000,
+        zoom: 3000,
+        cloudsFrom: 2500,
+        cover: 2900,
+        end: 3350,
+    });
+});
+
+test('deepZoomFov narrows 70x over the zoom and never slows near the end', () => {
+    close(deepZoomFov(0, 35), 35);
+    close(deepZoomFov(1, 35), 0.5, 1e-12);
+    // Zoom speed is the rate the log of the field of view shrinks; it must not drop off as the dive finishes.
+    const speed = (p: number) => Math.log(deepZoomFov(p, 35)) - Math.log(deepZoomFov(p + 0.01, 35));
+    assert.ok(speed(0.98) >= speed(0.5), 'zoom slows down near the end');
 });

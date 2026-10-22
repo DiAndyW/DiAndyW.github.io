@@ -14,31 +14,31 @@ const dishes: DishCard[] = [
     id: 1,
     name: 'Soy Garlic Chicken Bowl',
     description: 'First dish I made after finals. Feels good to relax',
-    src: 'assets/img1.jpg',
+    src: 'assets/img1.webp',
   },
   {
     id: 2,
     name: 'Loco Moco',
     description: 'The sauce on this amplified everything around it',
-    src: 'assets/img2.jpg',
+    src: 'assets/img2.webp',
   },
   {
     id: 3,
     name: 'Japanese Beef Curry Bowl',
     description: 'A classic',
-    src: 'assets/img3.jpg',
+    src: 'assets/img3.webp',
   },
   {
     id: 4,
     name: 'Sour and Spicy Malatang',
     description: 'Perfect for a chilly night',
-    src: 'assets/img4.jpg',
+    src: 'assets/img4.webp',
   },
   {
     id: 5,
     name: 'Galbi-jjim',
     description: 'Expensive but so worth it',
-    src: 'assets/img5.jpg',
+    src: 'assets/img5.webp',
   },
 ];
 
@@ -61,6 +61,7 @@ const FoodSection: React.FC = () => {
             <img
               src={dish.src}
               alt={dish.name}
+              loading="lazy"
               className="w-full h-auto block"
             />
 

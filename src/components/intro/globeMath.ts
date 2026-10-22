@@ -1,27 +1,65 @@
-// Globe SVG is viewBox 0 0 100 100; one equirectangular map copy is MAP_W x MAP_H (360° x 180°),
-// so the 100-wide globe window shows half the world at a time.
-export const MAP_W = 200;
-export const MAP_H = 100;
+// Pure math for the 3D globe intro. Kept free of three.js so it can be unit tested with node --test.
 
-export const LA = { lon: -118.24, lat: 34.05 };
+export type Vec3 = { x: number; y: number; z: number };
 
-// Where LA comes to rest, in globe units: on the lit left half, slightly left of center.
-export const LA_TARGET_X = 38;
+export const LA = { lat: 34.05, lon: -118.24 };
 
-export function lonLatToMap(lon: number, lat: number): { x: number; y: number } {
+// Tuned in the preview: 1.5s to cover 0.55 of a turn, then rest on LA for 0.5s before zooming in.
+export const SPIN = { ms: 1500, turns: 0.55, pauseMs: 500 };
+
+// A 1s dive toward LA. Clouds start halfway down, cover the screen at 90%, then part over 0.4s.
+export const ZOOM = { ms: 1000, cloudsFrom: 0.5, coverAt: 0.9, revealMs: 400 };
+
+const DEG = Math.PI / 180;
+
+// Unit vector for a lat/lon, matching how three.js SphereGeometry wraps an equirectangular texture
+// (lon -180 at u = 0, north pole at +Y).
+export function latLonToVector(lat: number, lon: number): Vec3 {
+    const phi = ((lon + 180) / 360) * Math.PI * 2;
+    const theta = (90 - lat) * DEG;
     return {
-        x: ((lon + 180) / 360) * MAP_W,
-        y: ((90 - lat) / 180) * MAP_H,
+        x: -Math.cos(phi) * Math.sin(theta),
+        y: Math.cos(theta),
+        z: Math.sin(phi) * Math.sin(theta),
     };
 }
 
-// translateX for the continent strip that puts `lon` at `targetX`, normalized into (-MAP_W, 0].
-export function finalStripOffset(lon: number, targetX: number): number {
-    const t = (targetX - lonLatToMap(lon, 0).x) % MAP_W;
-    return t > 0 ? t - MAP_W : t;
+// Same rotation matrices three.js applies for Object3D.rotation.y / .x.
+export function rotateY(v: Vec3, a: number): Vec3 {
+    return { x: v.x * Math.cos(a) + v.z * Math.sin(a), y: v.y, z: -v.x * Math.sin(a) + v.z * Math.cos(a) };
 }
 
-// One full rotation earlier, so the strip moves right (west to east) as it spins into place.
-export function spinStartOffset(final: number): number {
-    return final - MAP_W;
+export function rotateX(v: Vec3, a: number): Vec3 {
+    return { x: v.x, y: v.y * Math.cos(a) - v.z * Math.sin(a), z: v.y * Math.sin(a) + v.z * Math.cos(a) };
+}
+
+// Spin about Y (inner group), then tilt about X (outer group), so `v` ends up facing the camera at +Z.
+export function facingRotation(v: Vec3): { x: number; y: number } {
+    return { y: -Math.atan2(v.x, v.z), x: Math.atan2(v.y, Math.hypot(v.x, v.z)) };
+}
+
+// Camera distance at which a unit globe spans `fraction` of the viewport's shorter side.
+export function cameraDistance(fovDeg: number, aspect: number, fraction: number): number {
+    return 1 / (fraction * Math.tan((fovDeg / 2) * DEG) * Math.min(1, aspect));
+}
+
+// After the spin: rest on LA, dive in, fly into the clouds, then part them to reveal the site.
+export function timeline(spin: typeof SPIN, zoom: typeof ZOOM) {
+    const hold = spin.ms + spin.pauseMs;
+    const cover = hold + zoom.coverAt * zoom.ms;
+    return {
+        spin: spin.ms,
+        tiltFrom: spin.ms * 0.4,
+        hold,
+        zoom: hold + zoom.ms,
+        cloudsFrom: hold + zoom.cloudsFrom * zoom.ms,
+        cover,
+        end: cover + zoom.revealMs + 50,
+    };
+}
+
+// Field of view for the deep dive at zoom progress p (0-1). Zoom is exponential in field of view, so a
+// near-linear curve reads as a steady speed; the slight power only eases the start.
+export function deepZoomFov(p: number, baseFov: number): number {
+    return baseFov * Math.pow(1 / 70, Math.pow(p, 1.2));
 }
