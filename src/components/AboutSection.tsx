@@ -2,7 +2,7 @@ export function AboutSection() {
     return (
         <div className="flex self-center items-center">
             <div className="mt-8 font-normal">
-                <img src="/assets/pic.jpg" alt="cat" className="w-1/3 h-auto ml-4 block border-2 border-[#5d97b3] rounded-full max-w-48" />
+                <img src="/assets/pic.webp" alt="Andy Wang" fetchPriority="high" className="w-1/3 h-auto ml-4 block border-2 border-[#5d97b3] rounded-full max-w-48" />
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl p-4">
                 Hi! I'm Andy Wang
                 </h1>
@@ -11,10 +11,9 @@ export function AboutSection() {
                 Some industries I'm interested in are the environment, biotech, and education. I strive to build things that make a meaningful difference in the world.
                 </p>
                 <p className="text-base sm:text-lg p-4 pt-2">
-                I'm currently a third year undergrad at UCLA. Throughout my time here, I've worked on several projects, with my most recent being
-                <a href="https://www.clubhousebruins.com/" target="_blank" rel="noopener noreferrer" className="underline ml-1 text-[#5d97b3] hover:text-[#7bb3d1]">ClubHouse</a>
-                , which helps UCLA
-                students discover new clubs and rate clubs they're in!
+                I'm currently a fourth year undergrad at UCLA. This past summer, I was a Software Engineering Intern at Microsoft, where I built an
+                AI-assisted platform that turns Kubernetes security scan findings into actionable risk assessments. On the side, I've been building
+                Mosaic, an iOS app where friend groups take on weekly photo challenges that come together into a shared photo mosaic.
                 </p>
                 <p className="text-base sm:text-lg p-4 pt-2">
                 When I'm not working, you can catch me going on a run after the gym, playing video games, playing piano, chefing up in the kitchen,

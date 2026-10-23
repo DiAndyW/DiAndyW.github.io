@@ -50,7 +50,7 @@ const MiscSection: React.FC = () => {
         {
             id: 2,
             type: 'image',
-            frontImage: "/assets/rain.jpg", 
+            frontImage: "/assets/rain.webp", 
             isLocalImage: true,
             backContent: {
                 title: "Post Rain at UCLA",
@@ -133,6 +133,7 @@ const MiscSection: React.FC = () => {
                                                 <img 
                                                     src={item.frontImage} 
                                                     alt="Card image"
+                                                    loading="lazy"
                                                     className="w-full h-full object-cover rounded-lg"
                                                 />
                                             ) : (

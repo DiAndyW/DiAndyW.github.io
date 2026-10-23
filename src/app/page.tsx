@@ -216,7 +216,7 @@ export default function Home() {
             </ul>
           </aside>
 
-          <main className="flex-1 px-2 sm:px-4">
+          <main className="flex-1 min-w-0 px-2 sm:px-4">
             <section id="about">
               <AboutSection />
             </section>

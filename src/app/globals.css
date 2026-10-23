@@ -12,3 +12,27 @@ body {
     color-scheme: dark;
   }
 }
+
+/* Globe intro: hidden unless the <head> gate script marks this visit to play it */
+.intro-overlay {
+  display: none;
+}
+
+html[data-intro="play"] .intro-overlay {
+  display: block;
+}
+
+html[data-intro="play"] {
+  overflow: hidden;
+}
+
+/* Experience timeline: scrolls on its own, no visible scrollbar, faded top and bottom edges */
+.timeline-reel {
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(transparent, #000 70px, #000 calc(100% - 50px), transparent);
+  mask-image: linear-gradient(transparent, #000 70px, #000 calc(100% - 50px), transparent);
+}
+
+.timeline-reel::-webkit-scrollbar {
+  display: none;
+}

@@ -1,27 +1,90 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import TechList from './TechList';
+
+type Category = 'swe' | 'ai' | 'teaching';
+
+const CATEGORIES: { id: Category; label: string; short: string }[] = [
+    { id: 'swe', label: 'Software Engineering', short: 'SWE' },
+    { id: 'ai', label: 'AI/ML & Research', short: 'AI/ML' },
+    { id: 'teaching', label: 'Teaching', short: 'Teaching' },
+];
+
+// How much of the previous role stays visible above the selected one
+const PEEK = 70;
+const GLIDE_MS = 650;
+// Height within a role card (and the pane) where the connector attaches, level with the dot
+const LINK_Y = 24;
+const GAP = 28;
+
+const hasDetails = (item: { points: string[] }) => item.points.length > 0;
+
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 const ExperienceSection = () => {
-    const [selectedItem, setSelectedItem] = useState<number | null>(null);
+    const [category, setCategory] = useState<Category>('swe');
+    const [expandedItem, setExpandedItem] = useState<number | null>(null);
+    const reelRef = useRef<HTMLDivElement>(null);
+    const rowRefs = useRef(new Map<number, HTMLDivElement>());
+    const glideFrame = useRef(0);
+    const paneColumnRef = useRef<HTMLDivElement>(null);
+    const linkStubRef = useRef<SVGPathElement>(null);
+    const linkTrunkRef = useRef<SVGPathElement>(null);
+    const linkFadeRef = useRef<SVGLinearGradientElement>(null);
+    const linkFadeId = useId();
 
-    const Content = [
+    const Content: {
+        id: number;
+        time: string;
+        title: string;
+        organization: string;
+        category: Category;
+        technologies: string[];
+        description: string;
+        link?: string;
+        points: string[];
+    }[] = [
         {
             id: 1,
-            time: "May 2026 - Present",
-            title: "DevOps Intern",
-            organization: "UCLA Student Media",
-            technologies: ['JavaScript', 'React'],
-            description: "coming soon...",
-            points: [
-                "coming soon..."
-            ]
+            time: "Oct 2026 - Present",
+            title: "Software Developer",
+            organization: "LA Blueprint",
+            category: 'swe',
+            technologies: [],
+            description: "",
+            points: []
         },
         {
             id: 2,
-            time: "Nov 2025 - Present",
+            time: "Jun 2026 - Sep 2026",
+            title: "Software Engineering Intern",
+            organization: "Microsoft",
+            category: 'swe',
+            technologies: ['Go', 'Kubernetes', 'Azure', 'Microsoft Foundry', 'Linux'],
+            description: "Built an AI-assisted Kubernetes security posture platform that transforms security scan findings into actionable risk assessments and remediation guidance, helping users identify security issues in offline environments",
+            points: [
+                "Reduced ungrounded AI-generated security guidance by 91% through model evaluation on Microsoft Foundry and architecture redesign, improving the reliability of automated security analysis",
+                "Developed a modular Go-based security evaluation CLI with scanner orchestration and artifact management to automate Kubernetes and Linux security posture assessments",
+                "Authored the architecture and implementation plan for a new security evaluation capability, utilizing design reviews and incorporating cross-team feedback around security, scalability, and AI integration"
+            ]
+        },
+        {
+            id: 3,
+            time: "May 2026 - Present",
+            title: "DevOps Intern",
+            organization: "UCLA Student Media",
+            category: 'swe',
+            technologies: ['JavaScript', 'React'],
+            description: "",
+            points: []
+        },
+        {
+            id: 4,
+            time: "Nov 2025 - Jun 2026",
             title: "Undergraduate Researcher",
             organization: "The B. John Garrick Institute for the Risk Sciences at UCLA",
+            category: 'ai',
             technologies: ['Python', 'LangChain', 'OpenAI API'],
             description: "Developed an LLM pipeline to extract and validate causal relationships between organizational factors and human performance from Human Reliability Analysis research literature",
             points: [
@@ -31,10 +94,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 3,
-            time: "June 2025 - Present",
-            title: "Software Engineer",
+            id: 5,
+            time: "June 2025 - June 2026",
+            title: "Software Developer",
             organization: "UCLA Department of Civil Engineering",
+            category: 'swe',
             technologies: ['React Native', 'Leaflet.js', 'Google Maps API', 'FastAPI', 'Firebase', 'Supabase'],
             description: "Built a weather-tracking platform enabling farmers to optimize irrigation through automated field analysis and forecasting crop water demand, providing future irrigation recommendations",
             points: [
@@ -44,10 +108,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 4,
+            id: 6,
             time: "Mar 2025 - Present",
             title: "Lead Fullstack Developer",
-            organization: "ClubhouseUCLA",
+            organization: "Clubhouse Bruins",
+            category: 'swe',
             technologies: ['React', 'Next.js', 'Vercel', 'Supabase', 'TailwindCSS'],
             description: "Built a website using Next.js and Vercel, helping students review and discover clubs, serving 500+ monthly users",
             link: "https://www.clubhouseucla.com/",
@@ -57,10 +122,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 5,
+            id: 7,
             time: "Mar 2025 - Jun 2025",
             title: "Learning Assistant",
             organization: "UCLA Department of Computer Science",
+            category: 'teaching',
             technologies: [],
             description: "Led discussions for 30+ students in a Data Structures & Algorithms course",
             points: [
@@ -70,10 +136,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 6,
+            id: 8,
             time: "Jan 2025 - Jan 2026",
             title: "Undergraduate Researcher",
             organization: "UCLA Department of Mathematics Lab",
+            category: 'ai',
             technologies: [],
             description: "Researched multi-agent reinforcement learning under information asymmetry, extending the DCM bandit model to support multiple clicks per session",
             points: [
@@ -82,10 +149,11 @@ const ExperienceSection = () => {
             ]
         },
         {
-            id: 7,
+            id: 9,
             time: "Oct 2024 - May 2025",
             title: "Fullstack Developer",
             organization: "Creative Labs | Algoace",
+            category: 'swe',
             technologies: ['React Native', 'Java', 'Spring Boot', 'MongoDB', 'TailwindCSS'],
             description: "Worked with a 15 person team to build a gamified coding app helping software engineers enhance technical skills",
             points: [
@@ -95,10 +163,11 @@ const ExperienceSection = () => {
 
         },
         {
-            id: 8,
+            id: 10,
             time: "Sep 2024 - Jan 2025",
             title: "Undergraduate Researcher",
             organization: "Elegant Mind Lab UCLA",
+            category: 'ai',
             technologies: ['Python', 'ROS 2', 'Arduino'],
             description: "Assisted a 10-person team in developing autonomous surgery robots, focusing on robotic arm communication",
             points: [
@@ -109,22 +178,127 @@ const ExperienceSection = () => {
 
     ]
 
+    const firstWithDetails = (c: Category) =>
+        Content.find((item) => item.category === c && hasDetails(item))?.id ?? null;
+
+    const [selectedItem, setSelectedItem] = useState<number | null>(() => firstWithDetails('swe'));
+
+    const visible = Content.filter((item) => item.category === category);
+
+    const stopGlide = () => cancelAnimationFrame(glideFrame.current);
+
+    // Scroll the timeline (never the page) so the role sits in the top slot beside the details
+    const scrollToRole = (id: number, animate: boolean) => {
+        const reel = reelRef.current;
+        const row = rowRefs.current.get(id);
+        if (!reel || !row) return;
+        stopGlide();
+        const target = row.getBoundingClientRect().top - reel.getBoundingClientRect().top + reel.scrollTop - PEEK;
+        if (!animate || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            reel.scrollTop = target;
+            return;
+        }
+        const from = reel.scrollTop;
+        const start = performance.now();
+        const frame = (now: number) => {
+            const t = Math.min(1, (now - start) / GLIDE_MS);
+            reel.scrollTop = from + (target - from) * easeInOutCubic(t);
+            if (t < 1) glideFrame.current = requestAnimationFrame(frame);
+        };
+        glideFrame.current = requestAnimationFrame(frame);
+    };
+
+    // Redraw the connector from the open role's card to the pane; called on every timeline scroll
+    const updateLink = () => {
+        const reel = reelRef.current;
+        const column = paneColumnRef.current;
+        const stub = linkStubRef.current;
+        const trunk = linkTrunkRef.current;
+        const fade = linkFadeRef.current;
+        if (!reel || !column || !stub || !trunk || !fade) return;
+        const row = selectedItem === null ? undefined : rowRefs.current.get(selectedItem);
+        if (!row || reel.clientHeight === 0) {
+            stub.style.opacity = '0';
+            trunk.style.opacity = '0';
+            return;
+        }
+        const top = column.getBoundingClientRect().top;
+        const reelRect = reel.getBoundingClientRect();
+        const cardY = row.getBoundingClientRect().top - top + LINK_Y;
+        const y = Math.min(Math.max(cardY, reelRect.top - top), reelRect.bottom - top);
+        const offscreen = y !== cardY;
+        const paneY = PEEK + LINK_Y;
+        // Right-angled: across from the card, up or down at the middle of the gap, then across into the pane
+        stub.setAttribute('d', `M0 ${y} H${GAP / 2}`);
+        trunk.setAttribute('d', `M${GAP / 2} ${y} V${paneY} H${GAP}`);
+        // Once the card scrolls out, drop the stub and let the vertical fade toward the edge it left by
+        stub.style.opacity = offscreen ? '0' : '1';
+        trunk.style.opacity = '1';
+        fade.setAttribute('y1', String(y));
+        fade.setAttribute('y2', String(paneY));
+        trunk.setAttribute('stroke', offscreen ? `url(#${linkFadeId})` : '#7bb3d1');
+    };
+
+    // Snap (no glide) to the default role on mount and whenever the tab changes
+    useLayoutEffect(() => {
+        if (selectedItem !== null) scrollToRole(selectedItem, false);
+    }, [category]);
+
+    useLayoutEffect(updateLink, [selectedItem, category]);
+
+    // The reel is display:none below md; re-snap once it appears (rotating a tablet, widening a window)
+    useEffect(() => {
+        const reel = reelRef.current;
+        if (!reel || selectedItem === null) return;
+        let wasHidden = reel.clientHeight === 0;
+        const observer = new ResizeObserver(() => {
+            const hidden = reel.clientHeight === 0;
+            if (wasHidden && !hidden) scrollToRole(selectedItem, false);
+            updateLink();
+            wasHidden = hidden;
+        });
+        observer.observe(reel);
+        return () => observer.disconnect();
+    }, [selectedItem]);
+
+    useEffect(() => stopGlide, []);
+
     return (
         <div className="flex items-center">
         <div className="mt-8 font-normal">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl p-2 sm:p-4">
                 Experience
             </h1>
+            <div className="flex flex-wrap gap-2 px-2 sm:px-4">
+                {CATEGORIES.map((c) => (
+                    <button
+                        key={c.id}
+                        aria-pressed={category === c.id}
+                        onClick={() => {
+                            if (c.id === category) return;
+                            setCategory(c.id);
+                            setSelectedItem(firstWithDetails(c.id));
+                            setExpandedItem(null);
+                        }}
+                        className={`rounded-full border-2 px-3 py-1 text-sm transition-colors duration-300 cursor-pointer ${
+                            category === c.id
+                                ? 'bg-[#5d97b3] border-[#7bb3d1] font-bold'
+                                : 'border-white/30 hover:bg-[#7bb3d1]/20'
+                        }`}
+                    >
+                        <span className="sm:hidden">{c.short}</span>
+                        <span className="hidden sm:inline">{c.label}</span>
+                    </button>
+                ))}
+            </div>
             <div className="p-2 sm:p-4">
                 <div className="max-w-4xl mx-auto p-3 sm:p-6">
                     {/* Mobile Layout */}
-                    <div className="block sm:hidden space-y-3">
-                        {Content.map((item) => (
-                            <div key={item.id} className="border-2 border-white/30 rounded-lg overflow-hidden">
-                                <button
-                                    onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
-                                    className="w-full p-3 text-left bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 transition-colors duration-300 cursor-pointer"
-                                >
+                    <div className="block md:hidden space-y-3">
+                        {visible.map((item) => {
+                            const open = expandedItem === item.id;
+                            const header = (
+                                <>
                                     <div className="flex justify-between items-center">
                                         <div className="flex-1">
                                             <h3 className="font-bold text-base text-white mb-1">{item.title}</h3>
@@ -132,140 +306,208 @@ const ExperienceSection = () => {
                                         </div>
                                         <div className="text-right ml-3">
                                             <span className="text-xs text-gray-300 block mb-1">{item.time}</span>
-                                            <div className="text-gray-400 text-lg font-light">
-                                                {selectedItem === item.id ? '−' : '+'}
+                                        </div>
+                                    </div>
+                                    {hasDetails(item) ? (
+                                        <p className="text-gray-300 text-sm mb-1 mt-2 leading-relaxed">{item.description}</p>
+                                    ) : (
+                                        <p className="text-gray-500 text-sm italic mt-2">coming soon</p>
+                                    )}
+                                </>
+                            );
+
+                            if (!hasDetails(item)) {
+                                return (
+                                    <div key={item.id} className="border-2 border-dashed border-white/15 rounded-lg p-3">
+                                        {header}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div key={item.id} className="border-2 border-white/30 rounded-lg overflow-hidden bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 transition-colors duration-300">
+                                    <button
+                                        type="button"
+                                        aria-expanded={open}
+                                        onClick={() => setExpandedItem(open ? null : item.id)}
+                                        className="w-full p-3 text-left cursor-pointer"
+                                    >
+                                        {header}
+                                    </button>
+
+                                    {/* Eases to its real height; the points fade in just after */}
+                                    <div
+                                        className={`grid transition-[grid-template-rows] duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+                                            open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                                        }`}
+                                    >
+                                        <div className="overflow-hidden">
+                                            <div
+                                                className={`px-3 pb-3 transition-[opacity,transform] duration-300 ${
+                                                    open ? 'opacity-100 translate-y-0 delay-100' : 'opacity-0 -translate-y-1.5'
+                                                }`}
+                                            >
+                                                <div className="space-y-1 mb-3">
+                                                    {item.points.map((point, index) => (
+                                                        <div key={index} className="text-xs flex leading-relaxed">
+                                                            <span className="pr-2 flex-shrink-0 text-white">•</span>
+                                                            <span className="text-gray-300">{point}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <TechList technologies={item.technologies} />
+
+                                                {item.link && (
+                                                    <a
+                                                        href={item.link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-block mt-2 text-xs text-[#5d97b3] hover:text-[#7bb3d1] transition-colors duration-200 underline"
+                                                    >
+                                                        View Project
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
-                                    
-                                    <p className="text-gray-300 text-sm mb-1 mt-2 leading-relaxed">{item.description}</p>
-                                </button>
-                                
-                                <div 
-                                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                                        selectedItem === item.id 
-                                            ? 'max-h-[500px] opacity-100' 
-                                            : 'max-h-0 opacity-0'
-                                    }`}
-                                >
-                                    <div className="p-3 bg-[#2d4a57]/10 border-t border-white/20">
-                                        {/* Extended description points */}
-                                        <div className="space-y-1 mb-3">
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Desktop Layout: scrollable timeline beside a details pane */}
+                    <div className="hidden md:grid grid-cols-[5fr_7fr] gap-7 min-h-[440px]">
+                        <div className="relative">
+                            <div
+                                ref={reelRef}
+                                onWheel={stopGlide}
+                                onTouchStart={stopGlide}
+                                onScroll={updateLink}
+                                className="timeline-reel absolute inset-y-0 -left-3 -right-7 overflow-y-auto pl-3 pr-7"
+                            >
+                                {/* PEEK of top padding lets the first role reach the top slot too */}
+                                <div className="relative pl-7" style={{ paddingTop: PEEK }}>
+                                    {/* Timeline line */}
+                                    <div className="absolute left-2 bottom-0 w-0.5 bg-gradient-to-b from-gray-300 via-gray-300 via-85% to-transparent" style={{ top: PEEK + 4 }}></div>
+
+                                    {/* Timeline end marker */}
+                                    <div className="relative pb-6">
+                                        <div className="absolute -left-[26px] top-1 w-3 h-3 bg-gray-400 rounded-full border-2 border-white z-10"></div>
+                                        <div className="text-white text-sm">The journey continues...</div>
+                                    </div>
+
+                                    {visible.map((item) => {
+                                        const selected = selectedItem === item.id;
+                                        const card = (
+                                            <>
+                                                <span className="block text-xs text-gray-400">{item.time}</span>
+                                                <span className="block font-bold">{item.title}</span>
+                                                <span className="block font-bold text-[#5d97b3]">{item.organization}</span>
+                                                {!hasDetails(item) && (
+                                                    <span className="block text-xs text-gray-500 italic">coming soon</span>
+                                                )}
+                                            </>
+                                        );
+
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                ref={(el) => {
+                                                    if (el) rowRefs.current.set(item.id, el);
+                                                    else rowRefs.current.delete(item.id);
+                                                }}
+                                                className="relative mb-4"
+                                            >
+                                                {/* Timeline dot */}
+                                                <div
+                                                    className={`absolute -left-[26px] top-[18px] w-3 h-3 rounded-full border-2 z-10 transition-[transform,box-shadow] duration-300 ${
+                                                        hasDetails(item) ? 'bg-[#7bb3d1] border-white' : 'bg-gray-600 border-gray-400'
+                                                    } ${selected ? 'scale-150 shadow-[0_0_0_5px_rgba(123,179,209,0.25)] delay-500' : ''}`}
+                                                ></div>
+
+                                                {hasDetails(item) ? (
+                                                    <button
+                                                        type="button"
+                                                        aria-current={selected}
+                                                        onClick={() => {
+                                                            setSelectedItem(item.id);
+                                                            scrollToRole(item.id, true);
+                                                        }}
+                                                        className={`w-full text-left border-2 rounded-lg px-3.5 py-3 transition-colors duration-300 cursor-pointer ${
+                                                            selected
+                                                                ? 'bg-[#7bb3d1]/20 border-[#7bb3d1]'
+                                                                : 'bg-[#2d4a57]/20 border-white/30 hover:bg-[#7bb3d1]/15 hover:border-[#7bb3d1]'
+                                                        }`}
+                                                    >
+                                                        {card}
+                                                    </button>
+                                                ) : (
+                                                    <div className="border-2 border-dashed border-white/15 rounded-lg px-3.5 py-3">
+                                                        {card}
+                                                    </div>
+                                                )}
+
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {/* Room below the last role so it can still reach the top slot */}
+                                <div aria-hidden style={{ height: `calc(100% - ${PEEK + 90}px)` }}></div>
+                            </div>
+                        </div>
+
+                        {/* All panes share one cell, so the section is as tall as the tallest role */}
+                        <div ref={paneColumnRef} className="relative grid" style={{ paddingTop: PEEK }}>
+                            {/* Connector from the open role to the pane; steps up or down to stay attached while the timeline scrolls */}
+                            <svg aria-hidden className="absolute top-0 h-full overflow-visible pointer-events-none" style={{ left: -GAP, width: GAP }}>
+                                <defs>
+                                    <linearGradient ref={linkFadeRef} id={linkFadeId} gradientUnits="userSpaceOnUse" x1={GAP / 2} x2={GAP / 2}>
+                                        <stop offset="0" stopColor="#7bb3d1" stopOpacity="0" />
+                                        <stop offset="1" stopColor="#7bb3d1" />
+                                    </linearGradient>
+                                </defs>
+                                <path ref={linkStubRef} fill="none" stroke="#7bb3d1" strokeWidth="2" />
+                                <path ref={linkTrunkRef} fill="none" stroke="#7bb3d1" strokeWidth="2" strokeLinejoin="miter" />
+                            </svg>
+                            {visible.filter(hasDetails).map((item) => {
+                                const selected = selectedItem === item.id;
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className={`[grid-area:1/1] self-start border-2 border-[#7bb3d1]/50 rounded-lg p-5 bg-[#2d4a57]/25 transition-[opacity,transform,visibility] duration-300 ${
+                                            selected ? 'visible opacity-100 translate-y-0 delay-150' : 'invisible opacity-0 translate-y-2'
+                                        }`}
+                                    >
+                                        <h3 className="font-bold text-xl mb-1">{item.title}</h3>
+                                        <p className="font-bold text-[#5d97b3]">{item.organization}</p>
+                                        <p className="text-sm text-gray-400 mt-1 mb-3">{item.time}</p>
+                                        <p className="leading-relaxed mb-4">{item.description}</p>
+                                        <div className="mb-4">
                                             {item.points.map((point, index) => (
-                                                <div key={index} className="text-xs flex leading-relaxed">
-                                                    <span className="pr-2 flex-shrink-0 text-[#7bb3d1]">•</span>
-                                                    <span className="text-gray-300">{point}</span>
+                                                <div key={index} className="text-sm flex mb-1.5 leading-relaxed">
+                                                    <span className="pr-2 flex-shrink-0 text-white">•</span>
+                                                    <span>{point}</span>
                                                 </div>
                                             ))}
                                         </div>
 
-                                        {/* Technologies */}
-                                        <div className="flex flex-wrap gap-1">
-                                            {item.technologies.map(technology => (
-                                                <div key={technology} className="border-2 border-white/30 rounded-full text-xs px-2 py-1">
-                                                    {technology}
-                                                </div>
-                                            ))}
-                                        </div>
-                                        
+                                        <TechList technologies={item.technologies} />
+
                                         {item.link && (
-                                            <a 
-                                                href={item.link} 
-                                                target="_blank" 
+                                            <a
+                                                href={item.link}
+                                                target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-block text-xs text-[#5d97b3] hover:text-[#7bb3d1] transition-colors duration-200 underline"
+                                                className="inline-block mt-3 text-sm text-[#5d97b3] hover:text-[#7bb3d1] transition-colors duration-200 underline"
                                             >
                                                 View Project
                                             </a>
                                         )}
                                     </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Desktop Layout */}
-                    <div className="hidden sm:block relative">
-                        {/* Extended timeline line */}
-                        <div className="absolute top-0 left-2 sm:left-4 bottom-0 w-0.5 bg-gradient-to-b from-gray-300 via-gray-300 via-85% to-transparent"></div>
-
-                        {/* Timeline end marker */}
-                        <div className="relative ml-4 sm:ml-8 pb-8">
-                            <div className="absolute left-[-12px] sm:left-[-20px] w-3 h-3 bg-gray-400 rounded-full border-2 border-white z-10"></div>
-                            <div className="text-white text-sm ml-1">The journey continues...</div>
+                                );
+                            })}
                         </div>
-
-                        {Content.map((item) => (
-                            <div key={item.id} className="relative mb-6 sm:mb-10">
-                                {/* Timeline dot */}
-                                <div className="absolute left-[5px] sm:left-3 top-5 sm:top-6 w-3 h-3 bg-[#7bb3d1] rounded-full border-2 border-white z-10"></div>
-
-                                <div className="ml-4 sm:ml-8">
-                                    <div className="block sm:grid sm:grid-cols-6 sm:gap-4">
-                                        <div className="sm:col-span-2 sm:self-start pt-3 sm:pt-4 mb-2 sm:mb-0 ml-1">
-                                            <span className="text-sm sm:text-base text-gray-300 font-medium">
-                                                {item.time}
-                                            </span>
-                                        </div>
-
-                                        {/* Description Card */}
-                                        <div className="sm:col-span-4 sm:col-end-7 border-2 border-white/30 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 hover:border-[#7bb3d1] transition-all duration-300 cursor-pointer" 
-                                            onClick={() => setSelectedItem(selectedItem === item.id ? null : item.id)}
-                                        >
-                                            <h3 className="font-bold mb-2 text-lg sm:text-xl">
-                                                {item.title}
-                                            </h3>
-                                            <h3 className="font-bold mb-2 text-sm sm:text-base text-[#5d97b3]">
-                                                {item.organization}
-                                            </h3>
-                                            <h3 className="mb-3 sm:mb-4 text-sm sm:text-md leading-relaxed">
-                                                {item.description}
-                                            </h3>
-
-                                            {/* Technologies */}
-                                            <div className="flex flex-wrap gap-1 sm:gap-2">
-                                                {item.technologies.map(technology => (
-                                                    <div key={technology} className="border-2 border-white/30 rounded-full text-xs sm:text-sm px-2 sm:px-3 py-1">
-                                                        {technology}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            {/* Extended description */}
-                                            <div 
-                                                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                                                    selectedItem === item.id 
-                                                        ? 'max-h-[500px] opacity-100' 
-                                                        : 'max-h-0 opacity-0'
-                                                }`}
-                                            >
-                                                <div>
-                                                    <div className="border-t my-3 sm:my-4"></div>
-                                                    {item.points.map((point, index) => (
-                                                        <div key={index} className="text-xs sm:text-sm flex mb-1 leading-relaxed">
-                                                            <span className="pr-2 flex-shrink-0 text-[#7bb3d1]">•</span>
-                                                            <span>{point}</span>
-                                                        </div>
-                                                    ))}
-                                                    
-                                                    {item.link && (
-                                                        <a 
-                                                            href={item.link} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="inline-block mt-2 sm:ml-4 text-xs sm:text-sm text-[#5d97b3] hover:text-[#7bb3d1] transition-colors duration-200 underline"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            View Project
-                                                        </a>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>
