@@ -13,8 +13,7 @@ export function AboutSection() {
                 <p className="text-base sm:text-lg p-4 pt-2">
                 I'm currently a fourth year undergrad at UCLA. This past summer, I was a Software Engineering Intern at Microsoft, where I built an
                 AI-assisted platform that turns Kubernetes security scan findings into actionable risk assessments. On the side, I've been building
-                Mosaic, an iOS app where friend groups take on weekly photo challenges that come together into a shared photo mosaic. It's coming
-                soon to the App Store!
+                Mosaic, an iOS app where friend groups take on weekly photo challenges that come together into a shared photo mosaic.
                 </p>
                 <p className="text-base sm:text-lg p-4 pt-2">
                 When I'm not working, you can catch me going on a run after the gym, playing video games, playing piano, chefing up in the kitchen,

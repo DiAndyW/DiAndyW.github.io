@@ -1,172 +1,229 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import SpotifySection from './SpotifySection';
-import GamingSection from './GamingSection';
-import FoodSection from './FoodSection';
+import React, { useEffect, useRef, useState } from 'react';
+import RoomStage from './interests/RoomStage';
+import { INTERESTS } from './interests/interestsData';
+import type { InterestId } from './interests/roomLayout';
+import { panelStyle, type PanelPhase } from './interests/panelMotion';
+import { useInterestData } from './interests/useInterestData';
+import CatsPanel from './interests/panels/CatsPanel';
+import FoodPanel from './interests/panels/FoodPanel';
+import GamesPanel from './interests/panels/GamesPanel';
+import MusicPanel from './interests/panels/MusicPanel';
 
-const TABS = [
-  { id: 'music', label: 'Music' },
-  { id: 'gaming', label: 'Gaming' },
-  { id: 'food', label: 'Food' },
-  { id: 'misc', label: 'Misc' },
-] as const;
+// Below this stage width the room is the phone layout: a 4:5 stage that opens full-screen with a bottom sheet
+const MOBILE_WIDTH = 640;
+// Dragging the sheet down this far, or flicking it faster than this (px/ms), closes it
+const SWIPE_CLOSE_PX = 80;
+const SWIPE_FLICK = 0.5;
 
-type TabId = typeof TABS[number]['id'];
+export default function InterestsSection() {
+    const { music, games, retryMusic, retryGames } = useInterestData();
+    const [focus, setFocus] = useState<InterestId | null>(null);
+    const [phase, setPhase] = useState<PanelPhase>('hidden');
+    const [compact, setCompact] = useState(false);
+    const [reducedMotion, setReducedMotion] = useState(false);
+    const [dragY, setDragY] = useState(0);
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const tabRefs = useRef<Partial<Record<InterestId, HTMLButtonElement | null>>>({});
+    const returnTo = useRef<HTMLElement | null>(null);
+    const drag = useRef<{ y: number; time: number } | null>(null);
 
-const miscCards = [
-  {
-    id: 1,
-    type: 'text' as const,
-    frontDisplay: '5',
-    title: "The number of cats I've had",
-    backTitle: '',
-    facts: [
-      'Aurora (Orange)',
-      'Sunny (Orange) + Luna (Calico) (Siblings)',
-      'Emma (Orange) (I looked after her for a friend)',
-      'Cinder (Gray) (Short for Cinderella)',
-    ],
-  },
-  {
-    id: 2,
-    type: 'image' as const,
-    src: '/assets/rain.webp',
-    backTitle: 'Post Rain at UCLA',
-    facts: ['I love rain'],
-  },
-];
+    useEffect(() => {
+        const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const update = () => setReducedMotion(query.matches);
+        update();
+        query.addEventListener('change', update);
+        return () => query.removeEventListener('change', update);
+    }, []);
 
-const FlipCards: React.FC = () => {
-  const [flipped, setFlipped] = useState<number | null>(null);
-  const isTouch = useRef(false);
+    // The layout follows the section's own width, since the page's side columns narrow it
+    useEffect(() => {
+        const wrap = wrapRef.current!;
+        const observer = new ResizeObserver(() => setCompact(wrap.clientWidth < MOBILE_WIDTH));
+        observer.observe(wrap);
+        return () => observer.disconnect();
+    }, []);
 
-  return (
-    <div className="flex flex-wrap justify-center gap-4 sm:gap-6 px-4 py-4">
-      {miscCards.map((card) => (
-        <div
-          key={card.id}
-          className="w-[calc(50%-0.5rem)] sm:w-64"
-          style={{ perspective: '1000px' }}
-          onMouseEnter={() => { if (!isTouch.current) setFlipped(card.id); }}
-          onMouseLeave={() => { if (!isTouch.current) setFlipped(null); }}
-          onTouchStart={() => {
-            isTouch.current = true;
-            setFlipped(flipped === card.id ? null : card.id);
-          }}
-        >
-          <div className="relative w-full aspect-[4/5]" style={{ transformStyle: 'preserve-3d' }}>
-            {/* Front */}
-            <div
-              className="absolute inset-0 rounded-lg border-2 border-white/30 bg-[#2d4a57]/20 backdrop-blur-sm p-3 sm:p-6 flex flex-col items-center justify-center"
-              style={{
-                backfaceVisibility: 'hidden',
-                transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: flipped === card.id ? 'rotateY(180deg)' : 'rotateY(0deg)',
-              }}
-            >
-              {card.type === 'text' ? (
-                <>
-                  <div className="text-4xl sm:text-6xl mb-2 sm:mb-4">{card.frontDisplay}</div>
-                  <h3 className="text-sm sm:text-xl font-bold text-white text-center">{card.title}</h3>
-                </>
-              ) : (
-                <div className="absolute inset-0">
-                  <img src={card.src} alt="Card" loading="lazy" className="w-full h-full object-cover rounded-lg" />
+    const open = (id: InterestId) => {
+        if (!focus) {
+            const active = document.activeElement;
+            returnTo.current = active instanceof HTMLElement && active !== document.body ? active : (tabRefs.current[id] ?? null);
+        }
+        setFocus(id);
+    };
+
+    const close = () => {
+        setFocus(null);
+        setPhase('hidden');
+        setDragY(0);
+    };
+
+    // Start sliding in on the frame after the panel mounts; switching interests keeps it where it is
+    useEffect(() => {
+        if (!focus || phase !== 'hidden') return;
+        let raf = requestAnimationFrame(() => {
+            raf = requestAnimationFrame(() => setPhase('entering'));
+        });
+        return () => cancelAnimationFrame(raf);
+    }, [focus, phase]);
+
+    // Focus goes into the panel on open and back to whatever opened it on close
+    const opened = useRef(false);
+    useEffect(() => {
+        if (focus) {
+            document.getElementById(`${focus}-panel-title`)?.focus({ preventScroll: true });
+            opened.current = true;
+        } else if (opened.current) {
+            opened.current = false;
+            returnTo.current?.focus({ preventScroll: true });
+        }
+    }, [focus]);
+
+    useEffect(() => {
+        if (!focus) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') close();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [focus]);
+
+    // On a phone the room takes the whole screen while a panel is open, so the page stops scrolling
+    const fullScreen = compact && focus !== null;
+    useEffect(() => {
+        if (!fullScreen) return;
+        const scrollY = window.scrollY;
+        document.documentElement.style.overflow = 'hidden';
+        return () => {
+            document.documentElement.style.overflow = '';
+            window.scrollTo(0, scrollY);
+        };
+    }, [fullScreen]);
+
+    // Swipe down from the sheet's grabber or header
+    const onSheetDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        const header = e.currentTarget.querySelector('header');
+        if (!header || e.clientY > header.getBoundingClientRect().bottom) return;
+        e.preventDefault();
+        drag.current = { y: e.clientY, time: performance.now() };
+        setPhase('dragging');
+        e.currentTarget.setPointerCapture(e.pointerId);
+    };
+    const onSheetMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (drag.current) setDragY(Math.max(0, e.clientY - drag.current.y));
+    };
+    const onSheetUp = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!drag.current) return;
+        const dy = e.clientY - drag.current.y;
+        const speed = dy / Math.max(1, performance.now() - drag.current.time);
+        drag.current = null;
+        if (dy >= SWIPE_CLOSE_PX || speed > SWIPE_FLICK) close();
+        else {
+            setDragY(0);
+            setPhase('open');
+        }
+    };
+
+    const panel = (id: InterestId) => {
+        switch (id) {
+            case 'music':
+                return <MusicPanel compact={compact} data={music} onRetry={retryMusic} />;
+            case 'games':
+                return <GamesPanel compact={compact} data={games} onRetry={retryGames} />;
+            case 'food':
+                return <FoodPanel compact={compact} />;
+            case 'cats':
+                return <CatsPanel compact={compact} />;
+        }
+    };
+
+    return (
+        <div ref={wrapRef} className="mt-8 font-normal">
+            <h1 className="p-2 text-3xl sm:p-4 sm:text-4xl lg:text-5xl">Interests</h1>
+            <p className="mt-2 mb-8 px-2 text-[15px] leading-[22px] text-[#9ca3af] sm:px-4">
+                A small room with a few of my favorite things, explore!
+            </p>
+
+            <div className={`relative mx-auto w-full max-w-[1000px] ${compact ? 'aspect-[4/5]' : 'aspect-[25/17]'}`}>
+                <div
+                    className={
+                        fullScreen
+                            ? 'fixed inset-0 z-[60] h-[100svh] overflow-hidden bg-[#111827]'
+                            : 'absolute inset-0 overflow-hidden rounded-2xl bg-[#111827]'
+                    }
+                >
+                    <RoomStage focus={focus} sheet={compact} onPick={open} reducedMotion={reducedMotion} />
+
+                    {focus && (
+                        <button
+                            type="button"
+                            onClick={close}
+                            className={`absolute top-4 left-4 z-10 flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/30 bg-[rgba(17,24,39,0.72)] px-3 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7bb3d1] ${
+                                compact ? 'h-11' : 'h-9'
+                            }`}
+                        >
+                            <span aria-hidden="true">←</span> Room
+                        </button>
+                    )}
+
+                    {focus && (
+                        <div
+                            onPointerDown={compact ? onSheetDown : undefined}
+                            onPointerMove={compact ? onSheetMove : undefined}
+                            onPointerUp={compact ? onSheetUp : undefined}
+                            onPointerCancel={compact ? onSheetUp : undefined}
+                            // Once in, later moves (snapping back after a drag) don't wait for a swoop
+                            onTransitionEnd={(e) => e.target === e.currentTarget && phase === 'entering' && setPhase('open')}
+                            className={
+                                compact
+                                    ? 'absolute inset-x-0 bottom-0 z-10 h-[60%] [&_header]:touch-none [&_header]:select-none [&>aside>div:first-child]:touch-none'
+                                    : 'absolute top-3 right-3 bottom-3 z-10 w-[min(448px,46%)]'
+                            }
+                            style={panelStyle(phase, { compact, reducedMotion, dragY })}
+                        >
+                            {panel(focus)}
+                        </div>
+                    )}
                 </div>
-              )}
             </div>
 
-            {/* Back */}
             <div
-              className="absolute inset-0 rounded-lg border-2 border-white/30 bg-[#2d4a57]/20 backdrop-blur-sm p-3 sm:p-6 flex flex-col justify-center"
-              style={{
-                backfaceVisibility: 'hidden',
-                transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: flipped === card.id ? 'rotateY(0deg)' : 'rotateY(-180deg)',
-              }}
-            >
-              {card.backTitle && (
-                <h3 className="text-sm sm:text-xl font-bold text-white text-center mb-3 sm:mb-6">{card.backTitle}</h3>
-              )}
-              <div className="space-y-1.5 sm:space-y-3">
-                {card.facts.map((fact, i) => (
-                  <div key={i} className="text-white flex items-start">
-                    <span className="mr-1.5 text-xs sm:text-sm">•</span>
-                    <span className="text-xs sm:text-sm">{fact}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const InterestsSection: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('music');
-
-  return (
-    <div className="mt-8 font-normal">
-      <h1 className="text-3xl sm:text-4xl lg:text-5xl p-2 sm:p-4">Interests</h1>
-      <h2 className="text-white mb-6 mt-4 px-4">A few things I enjoy outside of work</h2>
-
-      {/* Slash-separated tabs */}
-      <div className="flex items-center gap-2 px-4 mb-6">
-        {TABS.map((tab, i) => (
-          <React.Fragment key={tab.id}>
-            {i > 0 && <span className="text-white/20 text-sm select-none">/</span>}
-            <button
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                text-sm font-medium transition-colors duration-200
-                ${activeTab === tab.id
-                  ? 'text-white'
-                  : 'text-white/40 hover:text-white/70'
+                className={
+                    compact
+                        ? 'mt-4 grid grid-cols-4'
+                        : 'mt-4 flex items-center justify-center gap-3'
                 }
-              `}
             >
-              {tab.label}
-            </button>
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* Content panel */}
-      <div className="relative overflow-hidden">
-        {TABS.map((tab) => (
-          <div
-            key={tab.id}
-            style={{
-              transition: 'opacity 0.25s ease, transform 0.25s ease',
-              opacity: activeTab === tab.id ? 1 : 0,
-              transform: activeTab === tab.id ? 'translateY(0)' : 'translateY(8px)',
-              position: activeTab === tab.id ? 'relative' : 'absolute',
-              pointerEvents: activeTab === tab.id ? 'auto' : 'none',
-              inset: activeTab === tab.id ? undefined : 0,
-            }}
-          >
-            {tab.id === 'music' && <SpotifySection />}
-
-            {tab.id === 'gaming' && <GamingSection />}
-
-            {tab.id === 'food' && <FoodSection />}
-
-            {tab.id === 'misc' && (
-              <div>
-                <h2 className="text-white mb-4 mt-2 px-4">
-                  Random snippets and facts from my life!
-                </h2>
-                <FlipCards />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-export default InterestsSection;
+                {INTERESTS.map(({ id, label }, i) => (
+                    <React.Fragment key={id}>
+                        {!compact && i > 0 && (
+                            <span aria-hidden="true" className="text-[#4b5563] select-none">
+                                ·
+                            </span>
+                        )}
+                        <button
+                            ref={(el) => {
+                                tabRefs.current[id] = el;
+                            }}
+                            type="button"
+                            aria-pressed={focus === id}
+                            onClick={() => (focus === id ? close() : open(id))}
+                            className={`relative h-11 cursor-pointer px-1 text-sm font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7bb3d1] ${
+                                focus === id ? 'text-white' : 'text-[#9ca3af] hover:text-white'
+                            }`}
+                        >
+                            {label}
+                            <span
+                                aria-hidden="true"
+                                className={`absolute inset-x-1 bottom-2 h-0.5 rounded-full bg-[#7bb3d1] transition-opacity duration-200 ${
+                                    focus === id ? 'opacity-100' : 'opacity-0'
+                                }`}
+                            />
+                        </button>
+                    </React.Fragment>
+                ))}
+            </div>
+        </div>
+    );
+}
