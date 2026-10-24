@@ -183,7 +183,7 @@ export default function InterestsSection() {
                     aria-labelledby={fullScreen ? `${focus}-panel-title` : undefined}
                     className={
                         fullScreen
-                            ? 'fixed inset-0 z-[60] h-[100svh] overflow-hidden bg-[#111827]'
+                            ? 'fixed inset-0 z-[60] h-[100dvh] overflow-hidden bg-[#111827]'
                             : 'absolute inset-0 overflow-hidden rounded-2xl bg-[#111827]'
                     }
                 >
