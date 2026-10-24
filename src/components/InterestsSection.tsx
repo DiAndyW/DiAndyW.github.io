@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import RoomStage from './interests/RoomStage';
 import { INTERESTS } from './interests/interestsData';
-import type { InterestId } from './interests/roomLayout';
+import { HIT_BOXES, restFrame, screenRect, type InterestId } from './interests/roomLayout';
 import { panelStyle, type PanelPhase } from './interests/panelMotion';
 import { useInterestData } from './interests/useInterestData';
 import CatsPanel from './interests/panels/CatsPanel';
 import FoodPanel from './interests/panels/FoodPanel';
 import GamesPanel from './interests/panels/GamesPanel';
 import MusicPanel from './interests/panels/MusicPanel';
+import { containModalFocus } from './interests/modalFocus';
 
 // Below this stage width the room is the phone layout: a 4:5 stage that opens full-screen with a bottom sheet
 const MOBILE_WIDTH = 640;
@@ -25,6 +26,7 @@ export default function InterestsSection() {
     const [reducedMotion, setReducedMotion] = useState(false);
     const [dragY, setDragY] = useState(0);
     const wrapRef = useRef<HTMLDivElement>(null);
+    const roomRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<Partial<Record<InterestId, HTMLButtonElement | null>>>({});
     const returnTo = useRef<HTMLElement | null>(null);
     const drag = useRef<{ y: number; time: number } | null>(null);
@@ -45,9 +47,9 @@ export default function InterestsSection() {
         return () => observer.disconnect();
     }, []);
 
-    const open = (id: InterestId) => {
+    const open = (id: InterestId, opener?: HTMLButtonElement) => {
         if (!focus) {
-            const active = document.activeElement;
+            const active = opener ?? document.activeElement;
             returnTo.current = active instanceof HTMLElement && active !== document.body ? active : (tabRefs.current[id] ?? null);
         }
         setFocus(id);
@@ -91,13 +93,41 @@ export default function InterestsSection() {
 
     // On a phone the room takes the whole screen while a panel is open, so the page stops scrolling
     const fullScreen = compact && focus !== null;
+    useLayoutEffect(() => {
+        if (!fullScreen || !focus) return;
+        const title = document.getElementById(`${focus}-panel-title`);
+        if (roomRef.current && title) return containModalFocus(roomRef.current, title);
+    }, [fullScreen, focus]);
+
     useEffect(() => {
         if (!fullScreen) return;
         const scrollY = window.scrollY;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const overflow = document.documentElement.style.overflow;
         document.documentElement.style.overflow = 'hidden';
         return () => {
-            document.documentElement.style.overflow = '';
+            document.documentElement.style.overflow = overflow;
             window.scrollTo(0, scrollY);
+            if (window.innerWidth === width && window.innerHeight === height) return;
+            // Rotation reflows the page; the old offset may put the opener outside the viewport.
+            const opener = returnTo.current;
+            const room = roomRef.current;
+            const target = opener && !opener.matches(':disabled') && opener.getClientRects().length ? opener : room;
+            if (!target) return;
+            let rect: { top: number; bottom: number } = target.getBoundingClientRect();
+            const object = INTERESTS.find(({ buttonLabel }) => opener?.getAttribute('aria-label') === buttonLabel);
+            if (object && target === opener && room) {
+                // The camera is still returning; scroll for the object's final resting position.
+                const viewport = { width: room.clientWidth, height: room.clientHeight };
+                const hit = screenRect(HIT_BOXES[object.id], restFrame(viewport), viewport);
+                const top = room.getBoundingClientRect().top + hit.y * viewport.height;
+                rect = { top, bottom: top + hit.h * viewport.height };
+            }
+            const headerBottom = document.getElementById('main-header')?.getBoundingClientRect().bottom ?? 0;
+            if (rect.top < Math.max(0, headerBottom) || rect.bottom > window.innerHeight) {
+                window.scrollBy({ top: (rect.top + rect.bottom - window.innerHeight) / 2, behavior: 'instant' });
+            }
         };
     }, [fullScreen]);
 
@@ -147,6 +177,10 @@ export default function InterestsSection() {
 
             <div className={`relative mx-auto w-full max-w-[1000px] ${compact ? 'aspect-[4/5]' : 'aspect-[25/17]'}`}>
                 <div
+                    ref={roomRef}
+                    role={fullScreen ? 'dialog' : undefined}
+                    aria-modal={fullScreen ? true : undefined}
+                    aria-labelledby={fullScreen ? `${focus}-panel-title` : undefined}
                     className={
                         fullScreen
                             ? 'fixed inset-0 z-[60] h-[100svh] overflow-hidden bg-[#111827]'
@@ -208,7 +242,7 @@ export default function InterestsSection() {
                             }}
                             type="button"
                             aria-pressed={focus === id}
-                            onClick={() => (focus === id ? close() : open(id))}
+                            onClick={(e) => (focus === id ? close() : open(id, e.currentTarget))}
                             className={`relative h-11 cursor-pointer px-1 text-sm font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7bb3d1] ${
                                 focus === id ? 'text-white' : 'text-[#9ca3af] hover:text-white'
                             }`}

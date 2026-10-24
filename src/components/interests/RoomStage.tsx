@@ -21,11 +21,10 @@ export default function RoomStage(props: {
     focus: InterestId | null;
     // The open panel is the phone's bottom sheet, so the object frames above it
     sheet: boolean;
-    onPick: (id: InterestId) => void;
+    onPick: (id: InterestId, opener: HTMLButtonElement) => void;
     reducedMotion: boolean;
-    onReady?: () => void;
 }) {
-    const { focus, sheet, onPick, reducedMotion, onReady } = props;
+    const { focus, sheet, onPick, reducedMotion } = props;
     const rootRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const buttonRefs = useRef<Partial<Record<InterestId, HTMLButtonElement | null>>>({});
@@ -41,9 +40,11 @@ export default function RoomStage(props: {
     const [hover, setHover] = useState<InterestId | null>(null);
     const [mode, setMode] = useState<'poster' | 'live' | 'fallback'>('poster');
     const [vp, setVp] = useState<Viewport>(IMAGE_VP);
+    const placedFrame = useRef<{ frame: CameraFrame; viewport: Viewport } | null>(null);
 
-    // Moves the overlay buttons and the pill; called every frame by the scene, or on resize without it
+    // Moves the overlay buttons and the pill on scene frames, resize, and hover changes.
     const place = useRef((frame: CameraFrame, v: Viewport) => {
+        placedFrame.current = { frame, viewport: v };
         for (const { id } of INTERESTS) {
             const button = buttonRefs.current[id];
             if (!button) continue;
@@ -100,7 +101,6 @@ export default function RoomStage(props: {
                     if (first) {
                         first = false;
                         setMode('live');
-                        onReady?.();
                     }
                 });
             } catch {
@@ -143,6 +143,8 @@ export default function RoomStage(props: {
 
     const hoverOn = (id: InterestId | null) => {
         hoverRef.current = id;
+        const placed = placedFrame.current;
+        if (id && placed) place.current(placed.frame, placed.viewport);
         setHover(id);
         sceneRef.current?.setHover(id);
     };
@@ -183,7 +185,7 @@ export default function RoomStage(props: {
                     type="button"
                     aria-label={buttonLabel}
                     disabled={focus !== null}
-                    onClick={() => onPick(id)}
+                    onClick={(e) => onPick(id, e.currentTarget)}
                     onMouseEnter={() => hoverOn(id)}
                     onMouseLeave={() => hoverOn(null)}
                     onFocus={(e) => focusShowsLabel(e.currentTarget) && hoverOn(id)}

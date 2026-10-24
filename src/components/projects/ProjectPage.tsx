@@ -1,19 +1,8 @@
-import type { Ref } from 'react';
+import { useId, type Ref } from 'react';
 import TechList from '../TechList';
 import Sticker from './stickers/Sticker';
 import type { Project } from './projectsData';
-
-// Desktop page geometry: side padding, and the sticker column's share of the width inside it.
-const PAGE_PAD_X = 24;
-const ART_SPLIT = 0.36;
-const ART_GAP = 32;
-
-// The widest sticker that fits the sticker column of a desktop page `pageWidth` wide.
-// Leaves a few pixels for the tilt and the lift; never wider than 240.
-export function desktopStickerWidth(pageWidth: number): number {
-    const column = (pageWidth - 2 * PAGE_PAD_X - ART_GAP) * ART_SPLIT;
-    return Math.max(0, Math.min(240, Math.floor(column - 8)));
-}
+import { PAGE_PAD_X, ART_SPLIT, ART_GAP } from './notepadGeometry';
 
 export default function ProjectPage({
     project,
@@ -29,7 +18,8 @@ export default function ProjectPage({
     // Desktop only: use desktopStickerWidth() so the sticker fits its column.
     stickerWidth?: number;
 }) {
-    const titleId = `project-title-${project.slug}`;
+    const instanceId = useId();
+    const titleId = `project-title-${project.slug}-${instanceId}`;
 
     const heading = (
         <div className={`flex min-w-0 flex-col gap-0.5 ${compact ? 'flex-1' : ''}`}>

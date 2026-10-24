@@ -4,10 +4,9 @@ import MoreStack from './MoreStack';
 import { splitTabs } from './pinnedProjects';
 import { TWO_TONE, type Project } from './projectsData';
 
-// Each tab is this much wider than it looks: the extra sits tucked under the paper's right edge.
-export const TAB_TUCK = 20;
-const TAB_WIDTH = 128; // sticks out 108px
-const ACTIVE_TAB_WIDTH = 150; // sticks out 130px
+import { TAB_TUCK, TAB_WIDTH, ACTIVE_TAB_WIDTH } from './notepadGeometry';
+
+export { TAB_TUCK } from './notepadGeometry';
 
 export function tabId(page: number): string {
     return `notepad-tab-${page}`;

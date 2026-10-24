@@ -1,10 +1,10 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
 import FeaturedStar from './FeaturedStar';
+import { S_STRIP_PAD_LEFT as PAD_LEFT } from './notepadGeometry';
 import { tabId } from './TabRail';
 import { TWO_TONE, type Project } from './projectsData';
 
 // Room kept clear at each end of the strip: the left for the first tab's focus ring, the right so the last tab clears the screen edge.
-const PAD_LEFT = 4;
 const PAD_RIGHT = 16;
 const TAB_HEIGHT = 52; // 44 showing below the paper
 const ACTIVE_TAB_HEIGHT = 60;
@@ -41,7 +41,8 @@ export default function TabStrip({
 
     // On every page change, and at once on mount (a deep link may open on a far tab)
     useEffect(() => {
-        reveal(pages.indexOf(page), mounted.current);
+        const focused = refs.current.findIndex((el) => el === document.activeElement);
+        reveal(focused === -1 ? pages.indexOf(page) : focused, mounted.current);
         mounted.current = true;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page]);
@@ -86,6 +87,7 @@ export default function TabStrip({
                         tabIndex={selected ? 0 : -1}
                         title={project.title}
                         onClick={() => onPick(p)}
+                        onFocus={() => reveal(k, false)}
                         className={`relative flex flex-none cursor-pointer snap-start items-center gap-1.5 overflow-hidden rounded-b-[10px] border-0 px-3.5 pt-2 text-[13px] leading-none text-[#1f2937] transition-[filter] duration-150 hover:brightness-[.9] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                             selected ? 'font-bold' : 'font-semibold'
                         }`}

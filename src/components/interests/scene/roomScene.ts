@@ -80,6 +80,7 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
     let hover: InterestId | null = null;
     let tween: { from: CameraFrame; start: number; resolve: () => void } | null = null;
     let lastFrame: CameraFrame | null = null;
+    let rendererSize: Viewport | null = null;
     const pointer = { x: 0, y: 0 };
     const parallax = { x: 0, y: 0 };
 
@@ -151,7 +152,10 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
         const dt = Math.min(100, Math.max(0, now - last));
         last = now;
         const v = vp();
-        renderer.setSize(v.width, v.height, false);
+        if (!rendererSize || rendererSize.width !== v.width || rendererSize.height !== v.height) {
+            renderer.setSize(v.width, v.height, false);
+            rendererSize = v;
+        }
 
         // Parallax pans the target only; the view direction never changes (the cat and lift()ed parts rely on it)
         const allowParallax = finePointer && !reducedMotion && !focus && !tween;

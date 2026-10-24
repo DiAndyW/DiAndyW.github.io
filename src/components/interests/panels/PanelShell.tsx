@@ -41,7 +41,7 @@ export default function PanelShell(props: {
                 {meta && <p className="m-0 truncate text-[13px] leading-[18px] text-[#9ca3af]">{meta}</p>}
             </header>
             <div className="h-px flex-none bg-white/8" />
-            <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${bodyClassName ?? (compact ? 'px-5 py-3' : 'px-6 py-4')}`}>{children}</div>
+            <div tabIndex={compact ? 0 : undefined} className={`flex min-h-0 flex-1 flex-col overflow-y-auto ${bodyClassName ?? (compact ? 'px-5 py-3' : 'px-6 py-4')}`}>{children}</div>
             {footer && (
                 <footer
                     className={`flex flex-none items-center justify-between gap-3 border-t border-white/8 text-xs leading-4 text-[#9ca3af] ${

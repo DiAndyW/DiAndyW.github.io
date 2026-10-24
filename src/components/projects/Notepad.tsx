@@ -9,9 +9,31 @@ import {
     type KeyboardEvent,
     type PointerEvent,
 } from 'react';
-import ProjectPage, { desktopStickerWidth } from './ProjectPage';
+import ProjectPage from './ProjectPage';
 import Spiral from './Spiral';
-import TabRail, { TAB_TUCK, tabId } from './TabRail';
+import {
+    TAB_TUCK,
+    TAB_OVERHANG,
+    PAPER_TOP,
+    PAPER_HEIGHT,
+    PAPER_BORDER,
+    PAPER_PAD,
+    STACK_OFFSETS,
+    TABS_TOP,
+    RING_INSET,
+    FRAME_HEIGHT,
+    S_PAPER_HEIGHT,
+    S_PAPER_TOP,
+    S_PAPER_PAD_TOP,
+    S_STRIP_TUCK,
+    S_STRIP_LEFT,
+    S_STRIP_PAD_LEFT,
+    S_RING_INSET,
+    S_BELOW_PAPER,
+    S_MAX_WIDTH,
+    desktopStickerWidth,
+} from './notepadGeometry';
+import TabRail, { tabId } from './TabRail';
 import TabStrip from './TabStrip';
 import { PROJECTS, type Project } from './projectsData';
 import {
@@ -25,32 +47,6 @@ import {
     swipeOutcome,
     turningPages,
 } from './notepadNav';
-
-// Desktop frame, after the BDesktop artboard. The rings sit at the top of the frame and overlap the paper's top edge.
-const TAB_OVERHANG = 130; // the active tab sticks out 130px; it never slides, and the others slide only to 114
-const PAPER_TOP = 18;
-const PAPER_HEIGHT = 570;
-const PAPER_BORDER = 1;
-const PAPER_PAD = { top: 40, x: 28, bottom: 20 };
-const STACK_OFFSETS = [10, 5]; // back to front
-const TABS_TOP = PAPER_TOP + 34;
-const RING_INSET = 40;
-// The whole notepad; the placeholder before the first measurement matches it.
-const FRAME_HEIGHT = 604;
-
-// Single-column frame, after the BMobile artboard. The paper's height is CSS, so it can follow the viewport.
-const S_PAPER_HEIGHT = 'max(420px, min(620px, calc(100svh - 180px)))';
-const S_PAPER_TOP = 14; // the rings stand this far above the paper
-const S_PAPER_PAD_TOP = 22;
-const S_STRIP_TUCK = 8; // the tab strip's top sits this far under the paper
-const S_STRIP_HEIGHT = 64; // the active tab is 60 tall, plus room for its focus ring (more on fine pointers: see the strip)
-const S_STRIP_LEFT = 10;
-const S_STRIP_PAD_LEFT = 4; // TabStrip's own left padding, so the first tab still starts 10px in
-const S_RING_INSET = 20;
-// How far the tab strip hangs below the paper
-const S_BELOW_PAPER = S_STRIP_HEIGHT - S_STRIP_TUCK;
-// Wider than this, lines on the page get long, so the paper stops growing and stays left-aligned
-const S_MAX_WIDTH = 560;
 
 const SWIPE_LOCK_PX = 10;
 const SWIPE_VELOCITY_WINDOW_MS = 100;
@@ -139,6 +135,8 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
     const pageRef = useRef(0);
     const flipCount = useRef(0);
     const focusPending = useRef(false);
+    const layoutRef = useRef<ReturnType<typeof layoutForWidth> | null>(null);
+    const resizeFocus = useRef<{ id: string; href: string | null } | null>(null);
     const fadeLayer = useRef<HTMLDivElement>(null);
     const sheetLayers = useRef<(HTMLDivElement | null)[]>([]);
     // Single column: the paper plus its flip copies, moved together by a swipe
@@ -159,7 +157,14 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
     // The layout follows the notepad's own width, since the page's side columns narrow it
     useEffect(() => {
         const root = rootRef.current!;
-        const observer = new ResizeObserver(() => setWidth(root.clientWidth));
+        const observer = new ResizeObserver(() => {
+            const nextWidth = root.clientWidth;
+            const active = document.activeElement;
+            if (layoutRef.current && layoutRef.current !== layoutForWidth(nextWidth) && active instanceof HTMLElement && root.contains(active)) {
+                resizeFocus.current = { id: active.id, href: active instanceof HTMLAnchorElement ? active.getAttribute('href') : null };
+            }
+            setWidth(nextWidth);
+        });
         observer.observe(root);
         return () => observer.disconnect();
     }, []);
@@ -199,6 +204,19 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
     }, []);
 
     const layout = width === null ? null : layoutForWidth(width);
+    layoutRef.current = layout;
+
+    // A breakpoint replaces the page and tabs. Restore the matching control, or the page title.
+    useLayoutEffect(() => {
+        const previous = resizeFocus.current;
+        resizeFocus.current = null;
+        const root = rootRef.current;
+        if (!previous || !root) return;
+        const byId = previous.id ? document.getElementById(previous.id) : null;
+        const link = previous.href ? Array.from(root.querySelectorAll('a')).find((el) => el.getAttribute('href') === previous.href) : null;
+        const target = byId && root.contains(byId) ? byId : link ?? titleRef.current;
+        target?.focus({ preventScroll: true });
+    }, [layout]);
 
     // Crossing the threshold mid-flip or mid-swipe: finish at once and keep the page.
     // Needed, not defensive: the new layout's flip copies would otherwise mount with no animation attached.
@@ -401,11 +419,24 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
         go(target, dir);
     };
 
+    const liveRegion = (
+        <div key="announcement" aria-live="polite" className="sr-only">
+            {live}
+        </div>
+    );
+
     if (width === null || layout === null) {
         // Nothing is measured yet: hold the height of whichever layout the container query picks (no layout shift)
         return (
             <div ref={rootRef} className="@container">
-                <div className={PLACEHOLDER} />
+                {liveRegion}
+                <div
+                    className={PLACEHOLDER}
+                    style={{
+                        '--notepad-single-height': `calc(${S_PAPER_TOP}px + ${S_PAPER_HEIGHT} + ${S_BELOW_PAPER}px)`,
+                        '--notepad-frame-height': `${FRAME_HEIGHT}px`,
+                    } as CSSProperties}
+                />
             </div>
         );
     }
@@ -492,15 +523,10 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
         );
     };
 
-    const liveRegion = (
-        <div aria-live="polite" className="sr-only">
-            {live}
-        </div>
-    );
-
     if (layout === 'single') {
         return (
             <div ref={rootRef} onKeyDown={onKeyDown}>
+                {liveRegion}
                 {/* On phones (below sm) the notepad bleeds 8px into the site's outer gutters, so the paper sits 16px
                     from each screen edge as designed. Measured width stays the root's, so the layout can't feed back. */}
                 <div className="relative -mx-2 sm:mx-0">
@@ -551,8 +577,6 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
                                 <Spiral rings={12} ringWidth={10} ringHeight={28} />
                             </div>
                         </div>
-
-                        {liveRegion}
                     </div>
                 </div>
             </div>
@@ -561,6 +585,7 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
 
     return (
         <div ref={rootRef} onKeyDown={onKeyDown}>
+            {liveRegion}
             {/* isolate: a page turning behind the pad stays inside the notepad */}
             <div className="relative isolate" style={{ height: FRAME_HEIGHT }}>
                 {/* the pages stacked behind */}
@@ -602,13 +627,11 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
                     <Spiral rings={Math.round(paperWidth / 41)} ringWidth={12} ringHeight={34} />
                 </div>
             </div>
-
-            {liveRegion}
         </div>
     );
 }
 
 // Before the first measurement: the desktop notepad's height (FRAME_HEIGHT) in a wide container, the single
 // column's otherwise (S_PAPER_TOP + S_PAPER_HEIGHT + S_BELOW_PAPER).
-// Literal, so Tailwind can see it: keep the numbers in step with the constants above.
-const PLACEHOLDER = 'h-[calc(max(420px,_min(620px,_100svh_-_180px))_+_70px)] @min-[720px]:h-[604px]';
+// Literal classes keep Tailwind detection static; CSS variables use the shared geometry.
+const PLACEHOLDER = 'h-[var(--notepad-single-height)] @min-[720px]:h-[var(--notepad-frame-height)]';

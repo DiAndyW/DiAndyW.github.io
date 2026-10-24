@@ -88,7 +88,7 @@ export default function MoreStack({
         focusFirst.current = false;
     }, [open]);
 
-    // Esc closes (back to the stack button); a press outside closes without moving focus
+    // Escape and outside presses dismiss the list; close() preserves a useful focus target.
     useEffect(() => {
         if (!open) return;
         const onKey = (e: globalThis.KeyboardEvent) => {
@@ -121,7 +121,9 @@ export default function MoreStack({
         window.clearTimeout(openTimer.current);
         if (open) {
             window.clearTimeout(closeTimer.current);
-            closeTimer.current = window.setTimeout(() => close(), HOVER_CLOSE_MS);
+            closeTimer.current = window.setTimeout(() => {
+                if (!rootRef.current?.contains(document.activeElement)) close();
+            }, HOVER_CLOSE_MS);
         }
     };
 
