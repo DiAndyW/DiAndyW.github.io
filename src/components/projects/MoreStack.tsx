@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import FeaturedStar from './FeaturedStar';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import ProjectTabLabel from './ProjectTabLabel';
+import { useProjectNavigation } from './useProjectNavigation';
 import { TWO_TONE, type Project } from './projectsData';
 
 const SLIVERS = 5;
@@ -35,7 +36,17 @@ export default function MoreStack({
     const buttonRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const bodyRef = useRef<HTMLDivElement>(null);
-    const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+    const { refs: optionRefs, focusAt: focusOption, onKeyDown: onListKeyDown } = useProjectNavigation({
+        count: rest.length,
+        mode: 'list',
+        onFocus: (_index, element) => {
+            const body = bodyRef.current;
+            if (!body) return;
+            if (element.offsetTop < body.scrollTop) body.scrollTop = element.offsetTop;
+            else if (element.offsetTop + element.offsetHeight > body.scrollTop + body.clientHeight)
+                body.scrollTop = element.offsetTop + element.offsetHeight - body.clientHeight;
+        },
+    });
     const openTimer = useRef<number | undefined>(undefined);
     const closeTimer = useRef<number | undefined>(undefined);
     const focusFirst = useRef(false);
@@ -52,17 +63,6 @@ export default function MoreStack({
         clearTimers();
         if (!toPage && panelRef.current?.contains(document.activeElement)) buttonRef.current?.focus({ preventScroll: true });
         setOpen(false);
-    };
-
-    // Move focus to an option and keep it in view by scrolling only the list body, never the window
-    const focusOption = (k: number) => {
-        const el = optionRefs.current[k];
-        const body = bodyRef.current;
-        if (!el || !body) return;
-        el.focus({ preventScroll: true });
-        if (el.offsetTop < body.scrollTop) body.scrollTop = el.offsetTop;
-        else if (el.offsetTop + el.offsetHeight > body.scrollTop + body.clientHeight)
-            body.scrollTop = el.offsetTop + el.offsetHeight - body.clientHeight;
     };
 
     // Fade in, with an 8px slide unless the visitor prefers reduced motion
@@ -125,29 +125,6 @@ export default function MoreStack({
                 if (!rootRef.current?.contains(document.activeElement)) close();
             }, HOVER_CLOSE_MS);
         }
-    };
-
-    const onListKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-        const at = optionRefs.current.findIndex((el) => el === document.activeElement);
-        let to: number;
-        switch (e.key) {
-            case 'ArrowDown':
-                to = Math.min(at + 1, rest.length - 1);
-                break;
-            case 'ArrowUp':
-                to = Math.max(at - 1, 0);
-                break;
-            case 'Home':
-                to = 0;
-                break;
-            case 'End':
-                to = rest.length - 1;
-                break;
-            default:
-                return;
-        }
-        e.preventDefault();
-        focusOption(to);
     };
 
     // Tabbing out of the open list closes it
@@ -246,8 +223,7 @@ export default function MoreStack({
                                     className="relative flex w-full flex-none cursor-pointer items-center gap-1.5 overflow-hidden rounded-r-[10px] border-0 pl-3.5 pr-3 text-left text-xs font-semibold leading-none text-[#1f2937] hover:brightness-[.9] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#1f2937]"
                                     style={{ height: TAB_HEIGHT, background: light }}
                                 >
-                                    {project.featured && <FeaturedStar />}
-                                    <span className="relative truncate">{project.title}</span>
+                                    <ProjectTabLabel project={project} />
                                 </button>
                             );
                         })}

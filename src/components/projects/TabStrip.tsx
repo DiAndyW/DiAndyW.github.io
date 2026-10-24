@@ -1,7 +1,8 @@
-import { useEffect, useRef, type KeyboardEvent } from 'react';
-import FeaturedStar from './FeaturedStar';
+import { useEffect, useRef } from 'react';
+import ProjectTabLabel from './ProjectTabLabel';
+import { useProjectNavigation } from './useProjectNavigation';
 import { S_STRIP_PAD_LEFT as PAD_LEFT } from './notepadGeometry';
-import { tabId } from './TabRail';
+import { tabId } from './tabNavigation';
 import { TWO_TONE, type Project } from './projectsData';
 
 // Room kept clear at each end of the strip: the left for the first tab's focus ring, the right so the last tab clears the screen edge.
@@ -23,7 +24,12 @@ export default function TabStrip({
 }) {
     const pages = projects.map((_, i) => i);
     const stripRef = useRef<HTMLDivElement>(null);
-    const refs = useRef<(HTMLButtonElement | null)[]>([]);
+    const { refs, onKeyDown } = useProjectNavigation({
+        count: pages.length,
+        activeIndex: pages.indexOf(page),
+        mode: 'tabs',
+        onFocus: (index) => reveal(index, true),
+    });
     const mounted = useRef(false);
 
     // Scroll only the strip (never the window) so a tab sits fully inside it
@@ -46,18 +52,6 @@ export default function TabStrip({
         mounted.current = true;
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page]);
-
-    // ↑/↓ move focus between tabs (wrapping); ←/→ change the page, handled by the notepad.
-    // Enter/Space activate through the button's own click.
-    const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-        e.preventDefault();
-        const at = refs.current.findIndex((el) => el === document.activeElement);
-        const from = at === -1 ? pages.indexOf(page) : at;
-        const to = (from + (e.key === 'ArrowDown' ? 1 : -1) + pages.length) % pages.length;
-        refs.current[to]?.focus({ preventScroll: true });
-        reveal(to, true);
-    };
 
     return (
         <div
@@ -93,8 +87,7 @@ export default function TabStrip({
                         }`}
                         style={{ height: selected ? ACTIVE_TAB_HEIGHT : TAB_HEIGHT, background: light }}
                     >
-                        {project.featured && <FeaturedStar />}
-                        <span className="relative whitespace-nowrap">{project.shortTitle ?? project.title}</span>
+                        <ProjectTabLabel project={project} compact />
                     </button>
                 );
             })}

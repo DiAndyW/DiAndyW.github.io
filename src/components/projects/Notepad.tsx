@@ -33,7 +33,8 @@ import {
     S_MAX_WIDTH,
     desktopStickerWidth,
 } from './notepadGeometry';
-import TabRail, { tabId } from './TabRail';
+import TabRail from './TabRail';
+import { tabId } from './tabNavigation';
 import TabStrip from './TabStrip';
 import { PROJECTS, type Project } from './projectsData';
 import {
@@ -143,6 +144,7 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
     const sheetRef = useRef<HTMLDivElement>(null);
     const drag = useRef<Drag | null>(null);
     const spring = useRef<Animation | null>(null);
+    const returnSlide = useRef<Animation | null>(null);
     // Removes the pending one-shot click guard, if any
     const stopClickGuard = useRef<(() => void) | null>(null);
 
@@ -283,6 +285,7 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
                       easing: FLIP_EASE,
                   })
                 : null;
+        returnSlide.current = slide;
         const id = flip.id;
         Promise.all(animations.map((a) => a.finished)).then(
             () => setFlip((f) => (f?.id === id ? null : f)),
@@ -291,6 +294,7 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
         return () => {
             animations.forEach((a) => a.cancel());
             slide?.cancel();
+            if (returnSlide.current === slide) returnSlide.current = null;
         };
     }, [flip, reducedMotion]);
 
@@ -303,6 +307,9 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
         stopClickGuard.current?.();
         spring.current?.cancel();
         spring.current = null;
+        // The return slide would otherwise override this drag's inline transform.
+        returnSlide.current?.cancel();
+        returnSlide.current = null;
         drag.current = {
             id: e.pointerId,
             x: e.clientX,
