@@ -1,0 +1,87 @@
+import { useRef, type KeyboardEvent } from 'react';
+import FeaturedStar from './FeaturedStar';
+import MoreStack from './MoreStack';
+import { splitTabs } from './pinnedProjects';
+import { TWO_TONE, type Project } from './projectsData';
+
+// Each tab is this much wider than it looks: the extra sits tucked under the paper's right edge.
+export const TAB_TUCK = 20;
+const TAB_WIDTH = 128; // sticks out 108px
+const ACTIVE_TAB_WIDTH = 150; // sticks out 130px
+
+export function tabId(page: number): string {
+    return `notepad-tab-${page}`;
+}
+
+// The desktop index tabs: the pinned projects, then the current project if it isn't pinned.
+// Rendered behind the paper, so only the part past its right edge shows.
+export default function TabRail({
+    projects,
+    page,
+    onPick,
+}: {
+    projects: Project[];
+    page: number;
+    onPick: (page: number) => void;
+}) {
+    const { pinned, promoted, rest } = splitTabs(projects, page);
+    const pages = [...pinned, ...(promoted === null ? [] : [promoted])];
+    const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+    // ↑/↓ move focus between tabs (wrapping); Enter/Space activate through the button's own click.
+    const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        const at = refs.current.findIndex((el) => el === document.activeElement);
+        const from = at === -1 ? pages.indexOf(page) : at;
+        const to = (from + (e.key === 'ArrowDown' ? 1 : -1) + pages.length) % pages.length;
+        refs.current[to]?.focus({ preventScroll: true });
+    };
+
+    return (
+        <>
+        <div
+            role="tablist"
+            aria-label="Jump to"
+            aria-orientation="vertical"
+            onKeyDown={onKeyDown}
+            className="flex flex-col gap-1.5"
+        >
+            {pages.map((p, k) => {
+                const selected = p === page;
+                const project = projects[p];
+                const { light } = TWO_TONE[project.color];
+                return (
+                    <button
+                        key={p}
+                        ref={(el) => {
+                            refs.current[k] = el;
+                        }}
+                        id={tabId(p)}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        aria-controls="project-panel"
+                        tabIndex={selected ? 0 : -1}
+                        title={project.title}
+                        onClick={() => onPick(p)}
+                        className={`relative flex h-11 cursor-pointer items-center gap-1.5 overflow-hidden rounded-r-[10px] border-0 pr-3 text-left text-xs font-semibold leading-none text-[#1f2937] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-safe:transition-[translate,width] motion-safe:duration-150 motion-reduce:transition-[filter] motion-reduce:duration-150 ${
+                            // The open page's tab already sticks out: only the others answer a hover
+                            selected ? '' : 'motion-safe:hover:translate-x-1.5 motion-safe:focus-visible:translate-x-1.5 motion-reduce:hover:brightness-[.85]'
+                        }`}
+                        style={{
+                            width: selected ? ACTIVE_TAB_WIDTH : TAB_WIDTH,
+                            paddingLeft: TAB_TUCK + 12,
+                            background: light,
+                        }}
+                    >
+                        {project.featured && <FeaturedStar />}
+                        <span className="relative truncate">{project.title}</span>
+                    </button>
+                );
+            })}
+        </div>
+        {rest.length > 0 && <MoreStack projects={projects} rest={rest} page={page} onPick={onPick} />}
+        </>
+    );
+}
