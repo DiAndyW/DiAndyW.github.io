@@ -5,6 +5,8 @@ import { CAMERA_RIGHT, ISO_DIRECTION, type InterestId, type Vec3 } from '../room
 import * as C from './palette';
 import { createCatCutout } from './catCutout';
 import { createWindowView, type WindowView } from './windowView';
+import { TABLE, RUG_SURFACE } from './roomSurfaces';
+import { createWindowLight, type WindowLight } from './windowLightMeshes';
 
 export type RoomModel = {
     root: THREE.Group;
@@ -20,6 +22,7 @@ export type RoomModel = {
         steam: THREE.Mesh[];
     };
     windowView: WindowView;
+    windowLight: WindowLight;
     dispose: () => void;
 };
 
@@ -238,19 +241,8 @@ export function buildRoomModel(reducedMotion = false): RoomModel {
     // Right wall: the room-facing side faces +Z (screen-left), its end cap faces +X
     b.box([0, 0, -0.3], [12, 6, 0], { top: C.WALL_CAP.top, lit: C.WALL_RIGHT, shade: C.WALL_CAP.shade }, 0);
 
-    // Window light on the floor, drawn under the plank lines
-    const patch = new THREE.BufferGeometry();
-    const quad: [number, number][] = [[0, 2.2], [3.2, 3.2], [3.2, 6.6], [0, 5.6]];
-    patch.setAttribute(
-        'position',
-        new THREE.Float32BufferAttribute(
-            // Wound so the triangles face up
-            [0, 2, 1, 0, 3, 2].flatMap((i) => [quad[i][0], 0, quad[i][1]]),
-            3,
-        ),
-    );
-    patch.setAttribute('normal', new THREE.Float32BufferAttribute(Array(18).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
-    b.place(patch, b.flat(C.WINDOW_LIGHT), [0, 0.002, 0]);
+    const windowLight = createWindowLight();
+    root.add(windowLight.root);
     for (const d of [2, 4, 6]) b.flatBox([0, 0.002, d - 0.02], [12, 0.004, d + 0.02], C.PLANK_LINE);
 
     // --- Window ----------------------------------------------------------------------------------
@@ -347,11 +339,11 @@ export function buildRoomModel(reducedMotion = false): RoomModel {
     });
 
     // --- Round table, bowl -----------------------------------------------------------------------
-    const [tx, tz] = [1.93, 5.23];
-    const TABLE_TOP = 1.625;
+    const [tx, tz] = [TABLE.x, TABLE.z];
+    const TABLE_TOP = TABLE.top;
     b.cylinder([tx, 0.0375, tz], 0.45, 0.075, { top: C.WOOD.lit, lit: C.WOOD.shade, shade: C.WOOD.shade }, 40);
     b.cylinder([tx, (0.075 + TABLE_TOP - 0.125) / 2, tz], 0.157, TABLE_TOP - 0.125 - 0.075, C.WOOD, 24);
-    b.cylinder([tx, TABLE_TOP - 0.0625, tz], 0.96, 0.125, C.WOOD, 56);
+    b.cylinder([tx, TABLE_TOP - 0.0625, tz], TABLE.radius, 0.125, C.WOOD, 56);
 
     const bowlProfile = [
         new THREE.Vector2(0, 0),
@@ -403,11 +395,11 @@ export function buildRoomModel(reducedMotion = false): RoomModel {
     });
 
     // --- Rug, cat --------------------------------------------------------------------------------
-    const RUG_TOP = 0.125;
-    b.cylinder([7.525, RUG_TOP / 2, 5.125], 2.3, RUG_TOP, { top: C.RUG.top, lit: C.RUG.lip, shade: C.RUG.lip }, 128);
-    const ring = new THREE.RingGeometry(1.766, 1.826, 128);
+    const RUG_TOP = RUG_SURFACE.top;
+    b.cylinder([RUG_SURFACE.x, RUG_TOP / 2, RUG_SURFACE.z], RUG_SURFACE.radius, RUG_TOP, { top: C.RUG.top, lit: C.RUG.lip, shade: C.RUG.lip }, 128);
+    const ring = new THREE.RingGeometry(RUG_SURFACE.ringInner, RUG_SURFACE.ringOuter, 128);
     ring.rotateX(-Math.PI / 2);
-    b.place(ring, b.flat(C.RUG.ring), [7.525, RUG_TOP + 0.001, 5.125]);
+    b.place(ring, b.flat(C.RUG.ring), [RUG_SURFACE.x, RUG_TOP + 0.001, RUG_SURFACE.z]);
 
     // The cat is a cut-out of the drawing, centred on its spot on the rug (SVG cat origin, RoomFlat (83.1, 244))
     const cat = createCatCutout(10);
@@ -500,8 +492,10 @@ export function buildRoomModel(reducedMotion = false): RoomModel {
         rings,
         parts: { vinyl, screen, tail: cat.tail, ear: cat.ear, breath: cat.breath, steam },
         windowView,
+        windowLight,
         dispose: () => {
             windowView.dispose();
+            windowLight.dispose();
             cat.dispose();
             b.owned.forEach((o) => o.dispose());
         },

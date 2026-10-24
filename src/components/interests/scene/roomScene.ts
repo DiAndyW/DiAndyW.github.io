@@ -17,8 +17,11 @@ import {
 } from '../roomLayout';
 import { STEAM_HOVER_MS, STEAM_MS, STEAM_OFFSETS, catIdleAt, flickerAt, steamAt, tailFlickAt, twitchAt } from '../motion';
 import { buildRoomModel } from './roomModel';
+import { createWeatherTransition } from '../weatherTransition';
+import { timeOfDay, type WindowState } from '../weather';
 
 export type RoomScene = {
+    setWeather: (state: WindowState, visible: boolean) => void;
     setFocus: (id: InterestId | null) => Promise<void>; // resolves when the camera arrives
     setHover: (id: InterestId | null) => void;
     setPointer: (nx: number, ny: number) => void; // -1..1 within the stage, for parallax
@@ -56,7 +59,7 @@ function applyFrame(camera: THREE.OrthographicCamera, frame: CameraFrame, vp: Vi
 }
 
 // Throws if WebGL is unavailable.
-export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion: boolean }): RoomScene {
+export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion: boolean; weather?: WindowState; hideGlows?: boolean }): RoomScene {
     const { reducedMotion } = opts;
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, stencil: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -66,6 +69,7 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
     const model = buildRoomModel(reducedMotion);
     scene.add(model.root);
+    const weather = createWeatherTransition(opts.weather ?? { weather: 'rainy', time: timeOfDay(new Date()) });
     const { vinyl, screen, tail, ear, breath, steam } = model.parts;
     const screenMaterial = screen.material as THREE.MeshBasicMaterial;
     const steamBases = steam.map((wisp) => wisp.position.clone());
@@ -122,7 +126,7 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
             const base = glowAt(now, id, reducedMotion);
             const glow = model.glows[id];
             const ring = model.rings[id];
-            glow.visible = ring.visible = !focus;
+            glow.visible = ring.visible = !focus && !opts.hideGlows;
             (glow.material as THREE.MeshBasicMaterial).opacity = base.opacity + (HOVER_GLOW.opacity - base.opacity) * h;
             glow.scale.setScalar(base.scale + (HOVER_GLOW.scale - base.scale) * h);
             (ring.material as THREE.MeshBasicMaterial).opacity = HOVER_GLOW.ring * h;
@@ -145,7 +149,9 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
             wisp.position.copy(steamBases[i]).addScaledVector(up, rise / SVG_PER_UNIT);
         });
 
-        model.windowView.update(now);
+        const weatherFrame = weather.frame(now);
+        model.windowView.update(now, weatherFrame);
+        model.windowLight.update(weatherFrame);
     };
 
     const render = (now: number) => {
@@ -192,7 +198,12 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
         cancelAnimationFrame(raf);
         raf = 0;
     };
-    const onVisibility = () => (document.visibilityState === 'hidden' ? stop() : start());
+    const onVisibility = () => {
+        if (document.visibilityState === 'hidden') {
+            weather.finish();
+            stop();
+        } else start();
+    };
     document.addEventListener('visibilitychange', onVisibility);
 
     // Resizes take effect on the next frame: the frame is worked out from the viewport every time
@@ -204,6 +215,9 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
     start();
 
     return {
+        setWeather: (state, visible) => {
+            weather.set(state, performance.now(), reducedMotion, visible && document.visibilityState !== 'hidden');
+        },
         setFocus: (id) => {
             tween?.resolve();
             tween = null;

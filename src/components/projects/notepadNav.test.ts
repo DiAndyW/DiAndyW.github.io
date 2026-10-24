@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
     announcement,
     hashForPage,
+    shouldClearProjectHash,
     layoutForWidth,
     pageFromHash,
     releaseSpeed,
@@ -61,6 +62,15 @@ test('pageFromHash maps known slugs and rejects the rest', () => {
 test('hashForPage', () => {
     assert.equal(hashForPage(0, PROJECTS), '#projects/mosaic');
     assert.equal(hashForPage(4, PROJECTS), '#projects/temple-of-doom');
+});
+
+test('project deep links clear only after leaving a section that has been visible', () => {
+    assert.equal(shouldClearProjectHash('#projects/temple-of-doom', true, false, PROJECTS), true);
+    assert.equal(shouldClearProjectHash('#projects/temple-of-doom', false, false, PROJECTS), false);
+    assert.equal(shouldClearProjectHash('#projects/temple-of-doom', true, true, PROJECTS), false);
+    assert.equal(shouldClearProjectHash('#interests', true, false, PROJECTS), false);
+    assert.equal(shouldClearProjectHash('#projects/unknown', true, false, PROJECTS), false);
+    assert.equal(shouldClearProjectHash('', true, false, PROJECTS), false);
 });
 
 test('announcement', () => {

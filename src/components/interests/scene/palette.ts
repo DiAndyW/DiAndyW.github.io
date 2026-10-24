@@ -10,7 +10,6 @@ export const WALL_CAP = { top: '#93b8ee', shade: '#4a6fae' } as const;
 export const FLOOR = '#e3ab6e';
 export const PLANK_LINE = '#d49c60';
 export const SLAB = { lit: '#c98d52', shade: '#b37b45' } as const;
-export const WINDOW_LIGHT = '#f0c48e';
 
 export const WOOD: Tones = { top: '#d0915a', lit: '#bd7e4a', shade: '#a46a3d' };
 export const WOOD_LINE = '#a46a3d';
@@ -63,14 +62,4 @@ export const SCREEN = {
     hillShade: '#8fad55',
     platform: '#fff7ea',
     hero: '#f59a45',
-} as const;
-
-export const WINDOW_VIEW = {
-    sky: '#26365a',
-    cloudBack: '#2f4168',
-    cloudFront: '#35497a',
-    treesBack: '#1f2d4d',
-    treesFront: '#18233d',
-    drop: '#b9d0ee',
-    rain: '#8fb0dc',
 } as const;

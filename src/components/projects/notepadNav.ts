@@ -49,6 +49,10 @@ export function hashForPage(page: number, projects: Pick<Project, 'slug'>[]): st
     return HASH_PREFIX + projects[page].slug;
 }
 
+export function shouldClearProjectHash(hash: string, hasBeenVisible: boolean, visible: boolean, projects: Pick<Project, 'slug'>[]): boolean {
+    return hasBeenVisible && !visible && pageFromHash(hash, projects) !== null;
+}
+
 export function announcement(page: number, projects: Pick<Project, 'title'>[]): string {
     return `Page ${page + 1} of ${projects.length}: ${projects[page].title}`;
 }

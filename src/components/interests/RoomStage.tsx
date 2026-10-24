@@ -5,6 +5,8 @@ import { INTERESTS } from './interestsData';
 import { HIT_BOXES, restFrame, screenRect, type CameraFrame, type InterestId, type Viewport } from './roomLayout';
 import type { RoomScene } from './scene/roomScene';
 import { focusShowsLabel, visibilityGate } from './stageState';
+import { useRoomWeather } from './useRoomWeather';
+import { roomDescription } from './weather';
 
 // The room image (a capture of the rest view at 1000×680). It shows until the 3D scene draws its first
 // frame, and stays as the fallback without WebGL.
@@ -25,6 +27,10 @@ export default function RoomStage(props: {
     reducedMotion: boolean;
 }) {
     const { focus, sheet, onPick, reducedMotion } = props;
+    const weather = useRoomWeather();
+    const weatherRef = useRef(weather);
+    weatherRef.current = weather;
+    const visibleRef = useRef(false);
     const rootRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const buttonRefs = useRef<Partial<Record<InterestId, HTMLButtonElement | null>>>({});
@@ -90,7 +96,8 @@ export default function RoomStage(props: {
             try {
                 const { createRoomScene } = await import('./scene/roomScene');
                 if (cancelled) return;
-                scene = createRoomScene(canvasRef.current!, { reducedMotion: reducedRef.current });
+                scene = createRoomScene(canvasRef.current!, { reducedMotion: reducedRef.current, weather: weatherRef.current,
+                    hideGlows: process.env.NODE_ENV === 'development' && new URLSearchParams(window.location.search).get('roomGlows') === 'off' });
                 sceneRef.current = scene;
                 scene.setSheet(wanted.current.sheet);
                 if (wanted.current.focus) scene.setFocus(wanted.current.focus);
@@ -115,7 +122,14 @@ export default function RoomStage(props: {
             { rootMargin: '200px' },
         );
         observer.observe(root);
+        // Actual intersection, separate from the 200px preload margin, controls weather transitions.
+        const visible = new IntersectionObserver(([entry]) => {
+            visibleRef.current = entry.isIntersecting;
+            if (!entry.isIntersecting) scene?.setWeather(weatherRef.current, false);
+        });
+        visible.observe(root);
         return () => {
+            visible.disconnect();
             cancelled = true;
             observer.disconnect();
             gate.detach();
@@ -126,6 +140,10 @@ export default function RoomStage(props: {
         // The scene is built once
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        sceneRef.current?.setWeather(weather, visibleRef.current);
+    }, [weather]);
 
     // Before the focus effect, so a phone open frames for the sheet from the first frame
     useEffect(() => {
@@ -166,14 +184,14 @@ export default function RoomStage(props: {
             {mode !== 'live' && (
                 <img
                     src={ROOM_IMAGE}
-                    alt="An illustrated room at night with a record player, a computer, a bowl of food on a small table, and an orange cat on a green rug, beside a rainy window"
+                    alt={roomDescription()}
                     className="pointer-events-none absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 select-none"
                     style={{ width: image.width, height: image.height }}
                     draggable={false}
                 />
             )}
             {mode !== 'fallback' && (
-                <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 block h-full w-full touch-pan-y" />
+                <canvas ref={canvasRef} role="img" aria-label={mode === 'live' ? roomDescription(weather) : undefined} aria-hidden={mode !== 'live'} className="absolute inset-0 block h-full w-full touch-pan-y" />
             )}
 
             {INTERESTS.map(({ id, buttonLabel }) => (

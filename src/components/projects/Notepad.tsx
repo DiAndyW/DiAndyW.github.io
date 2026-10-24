@@ -44,6 +44,7 @@ import {
     pageFromHash,
     releaseSpeed,
     sheetTimings,
+    shouldClearProjectHash,
     stepPage,
     swipeOutcome,
     turningPages,
@@ -204,6 +205,24 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
         return () => observer.disconnect();
         // mount only: the hash is read once
     }, []);
+
+    // A selected-page link belongs to the notepad while its section is on screen. Don't
+    // clear an initial deep link before the mount effect has brought Projects into view.
+    useEffect(() => {
+        if (!usesDefaultProjects) return;
+        const section = rootRef.current?.closest('section');
+        if (!section) return;
+        let hasBeenVisible = false;
+        const headerHeight = document.getElementById('main-header')?.offsetHeight ?? 0;
+        const observer = new IntersectionObserver(([entry]) => {
+            if (shouldClearProjectHash(location.hash, hasBeenVisible, entry.isIntersecting, projects)) {
+                history.replaceState(history.state, '', location.pathname + location.search);
+            }
+            if (entry.isIntersecting) hasBeenVisible = true;
+        }, { rootMargin: `-${headerHeight}px 0px 0px 0px` });
+        observer.observe(section);
+        return () => observer.disconnect();
+    }, [usesDefaultProjects, projects]);
 
     const layout = width === null ? null : layoutForWidth(width);
     layoutRef.current = layout;
