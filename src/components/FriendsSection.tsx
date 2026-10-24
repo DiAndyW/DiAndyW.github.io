@@ -18,7 +18,7 @@ export function FriendsSection() {
         {
             id: 4,
             name: "Charlton Shih",
-            link: "https://chewton2k.github.io/CharltonShih/",
+            link: "https://www.charltonshih.com/",
         },
         {
             id: 5,
