@@ -114,7 +114,6 @@ function Fallback({ shade }: { shade: string }) {
 
 export default function Sticker({
     project,
-    index,
     width,
 }: {
     project: Project;
@@ -125,14 +124,13 @@ export default function Sticker({
     const radius = Math.max(8, Math.round(width * 0.05));
     const innerRadius = Math.max(5, Math.round(width * 0.035));
     const lift = Math.max(2, Math.round(width * 0.012));
-    const tilt = index % 2 === 0 ? -1.5 : 1.5;
     const { light, shade } = TWO_TONE[project.color];
     const label = project.sticker ? LABELS[project.sticker] : `Illustration for ${project.title}`;
 
     return (
         <div
             className="relative shrink-0"
-            style={{ width, aspectRatio: '4 / 3', transform: `rotate(${tilt}deg)` }}
+            style={{ width, aspectRatio: '4 / 3' }}
         >
             {/* flat, unblurred lift */}
             <div

@@ -11,6 +11,8 @@ import {
 } from 'react';
 import ProjectPage from './ProjectPage';
 import Spiral from './Spiral';
+import BindingLayer, { type BindingHandle } from './BindingLayer';
+import { NOTEBOOK_PALETTES, notebookPaletteVariables } from './notepadPalette';
 import {
     TAB_TUCK,
     TAB_OVERHANG,
@@ -25,9 +27,7 @@ import {
     S_PAPER_HEIGHT,
     S_PAPER_TOP,
     S_PAPER_PAD_TOP,
-    S_STRIP_TUCK,
-    S_STRIP_LEFT,
-    S_STRIP_PAD_LEFT,
+    S_SIDE_WIDTH,
     S_RING_INSET,
     S_BELOW_PAPER,
     S_MAX_WIDTH,
@@ -82,6 +82,50 @@ function depthFrames(dir: 1 | -1, k: number): Keyframe[] {
 }
 const sheetDepth = (dir: 1 | -1, i: number, n: number) => (dir === 1 ? n - i : i + 1);
 const SLIDE_MS = 250;
+const DEFAULT_ANGLES = [-10, 0, 0];
+const DEFAULT_PALETTE = NOTEBOOK_PALETTES.length - 1;
+type NotebookView = { angles: number[]; palette: number; parallel: boolean };
+const DEFAULT_VIEW: NotebookView = { angles: DEFAULT_ANGLES, palette: DEFAULT_PALETTE, parallel: false };
+const NOTEBOOK_ANGLE: CSSProperties = {
+    transform: `rotateX(var(--notebook-up, ${DEFAULT_ANGLES[1]}deg)) rotateY(var(--notebook-left, ${DEFAULT_ANGLES[0]}deg)) rotateZ(var(--notebook-roll, ${DEFAULT_ANGLES[2]}deg))`,
+    transformOrigin: '50% 50%',
+};
+
+function AngleTweaker({ view, onChange }: { view: NotebookView; onChange: (view: NotebookView) => void }) {
+    const [visible, setVisible] = useState(false);
+    const { angles, palette, parallel } = view;
+    useEffect(() => {
+        setVisible(process.env.NODE_ENV === 'development' && new URLSearchParams(window.location.search).has('notebookTweaker'));
+    }, []);
+    if (!visible) return null;
+    const update = (angles: number[]) => onChange({ ...view, angles });
+    const setColors = (palette: number) => onChange({ ...view, palette });
+    return (
+        <div className="relative z-[70] mb-10 flex flex-wrap items-center gap-4 rounded-lg border border-white/30 bg-gray-900 p-4 text-sm">
+            <p className="w-full text-gray-300">Actual notebook preview · tabs, flips, and text selection work here.</p>
+            <div className="flex w-full flex-wrap gap-2">
+                <button type="button" className="rounded border border-white/30 px-3 py-1" onClick={() => onChange(DEFAULT_VIEW)}>Saved angle</button>
+                <label className="flex items-center gap-2"><input type="checkbox" checked={!parallel} onChange={(event) => onChange({ ...view, parallel: !event.target.checked })} />Perspective</label>
+            </div>
+            {['Left / right', 'Down / up', 'Rotate'].map((label, i) => (
+                <label key={label} className="flex items-center gap-2">
+                    {label}
+                    <input type="range" min={i === 2 ? -180 : -85} max={i === 2 ? 180 : 85} value={angles[i]} onChange={(event) => update(angles.map((value, k) => k === i ? Number(event.target.value) : value))} />
+                    <output className="w-10">{angles[i]}°</output>
+                </label>
+            ))}
+            <button type="button" className="rounded border border-white/30 px-3 py-1" onClick={() => update([0, 0, 0])}>Reset</button>
+            <label className="flex w-full items-center gap-2">Palette
+                <select className="rounded border border-white/30 bg-gray-900 p-2" value={palette} onChange={(event) => {
+                    const next = Number(event.target.value);
+                    setColors(next);
+                }}>
+                    {NOTEBOOK_PALETTES.map((option, i) => <option key={option.label} value={i}>{option.label}</option>)}
+                </select>
+            </label>
+        </div>
+    );
+}
 
 // A change of page in progress. Its layers are copies of the pages, drawn over the real one.
 // `fromX`: where a swipe let go of the page; the sheet slides home from there while the flip runs.
@@ -100,12 +144,13 @@ type Drag = {
 };
 
 const PAPER: CSSProperties = {
+    isolation: 'isolate',
     boxSizing: 'border-box',
     padding: `${PAPER_PAD.top}px ${PAPER_PAD.x}px ${PAPER_PAD.bottom}px`,
     borderRadius: 14,
-    border: `${PAPER_BORDER}px solid rgba(123,179,209,.25)`,
-    backgroundColor: '#17232c',
-    backgroundImage: 'linear-gradient(rgba(123,179,209,.08) 1px, transparent 1px)',
+    border: `${PAPER_BORDER}px solid var(--notebook-border)`,
+    backgroundColor: 'var(--notebook-paper)',
+    backgroundImage: 'linear-gradient(var(--notebook-rule) 1px, transparent 1px)',
     backgroundSize: '100% 24px',
 };
 
@@ -121,18 +166,28 @@ const SINGLE_PAPER: CSSProperties = {
 // The back of a sheet: plain, darker paper, turned to face away until the sheet passes upright
 const PAGE_BACK: CSSProperties = {
     transform: 'rotateX(180deg)',
-    backgroundColor: '#22323e',
+    backgroundColor: 'var(--notebook-back)',
     backgroundImage: 'none',
 };
 
 export default function Notepad({ projects = PROJECTS }: { projects?: Project[] }) {
     const rootRef = useRef<HTMLDivElement>(null);
+    const [view, setView] = useState<NotebookView>(DEFAULT_VIEW);
+    const viewStyle = {
+        ...notebookPaletteVariables(view.palette),
+        '--notebook-left': `${view.angles[0]}deg`,
+        '--notebook-up': `${view.angles[1]}deg`,
+        '--notebook-roll': `${view.angles[2]}deg`,
+        '--notebook-perspective': view.parallel ? 'none' : '1800px',
+    } as CSSProperties;
     const titleRef = useRef<HTMLHeadingElement>(null);
     const [width, setWidth] = useState<number | null>(null);
     const [reducedMotion, setReducedMotion] = useState(false);
     const [page, setPage] = useState(0);
     const [flip, setFlip] = useState<Flip | null>(null);
     const [live, setLive] = useState('');
+    const [bindingReady, setBindingReady] = useState(false);
+    const bindingRef = useRef<BindingHandle>(null);
     // The page as of the latest go(), so quick repeated clicks never step from a stale value
     const pageRef = useRef(0);
     const flipCount = useRef(0);
@@ -246,12 +301,18 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
         drag.current = null;
         spring.current?.cancel();
         spring.current = null;
-    }, [layout]);
+        bindingRef.current?.cancel();
+        setBindingReady(false);
+    }, [layout, width]);
 
     // The only way the page changes. Everything a visitor notices about a page change happens here, never on mount.
     const go = (target: number, dir: 1 | -1, fromX = 0) => {
         const from = pageRef.current;
         if (target === from) return;
+        try {
+            const panel = rootRef.current?.querySelector<HTMLElement>('#project-panel');
+            if (panel) bindingRef.current?.capture(from, panel);
+        } catch { /* Snapshot failures keep the ordinary page-turn fallback available. */ }
         pageRef.current = target;
         // Any swipe in progress gives way; the flip below takes the sheet home from fromX
         drag.current = null;
@@ -278,6 +339,32 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
     useLayoutEffect(() => {
         if (!flip) return;
         const { dir, sheets } = flip;
+        const slideHome = () => {
+            const sheet = sheetRef.current;
+            const slide = flip.fromX && sheet && !reducedMotion
+                ? sheet.animate([{ transform: `translateX(${flip.fromX}px)` }, { transform: 'translateX(0)' }], { duration: SLIDE_MS, easing: FLIP_EASE })
+                : null;
+            returnSlide.current = slide;
+            return slide;
+        };
+        if (!reducedMotion && bindingReady) {
+            const elements = sheetLayers.current.slice(0, sheets.length).map((layer) => layer?.querySelector<HTMLElement>('[data-page-layer]'));
+            if (elements.every((element): element is HTMLElement => !!element)) {
+                const binding = bindingRef.current;
+                const id = flip.id;
+                if (binding?.play(sheets, elements, dir, () => setFlip((current) => current?.id === id ? null : current))) {
+                    const layers = sheetLayers.current.slice(0, sheets.length);
+                    layers.forEach((layer) => { if (layer) layer.style.visibility = 'hidden'; });
+                    const slide = slideHome();
+                    return () => {
+                        slide?.cancel();
+                        if (returnSlide.current === slide) returnSlide.current = null;
+                        binding.cancel();
+                        layers.forEach((layer) => { if (layer) layer.style.visibility = ''; });
+                    };
+                }
+            }
+        }
         const animations: Animation[] = [];
         if (reducedMotion) {
             const fade = fadeLayer.current;
@@ -295,16 +382,7 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
             });
         }
         if (animations.length === 0) return;
-        // A swipe let go of the page off to one side: bring the sheet home as the flip starts
-        const sheet = sheetRef.current;
-        const slide =
-            flip.fromX && sheet
-                ? sheet.animate([{ transform: `translateX(${flip.fromX}px)` }, { transform: 'translateX(0)' }], {
-                      duration: SLIDE_MS,
-                      easing: FLIP_EASE,
-                  })
-                : null;
-        returnSlide.current = slide;
+        const slide = slideHome();
         const id = flip.id;
         Promise.all(animations.map((a) => a.finished)).then(
             () => setFlip((f) => (f?.id === id ? null : f)),
@@ -315,14 +393,14 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
             slide?.cancel();
             if (returnSlide.current === slide) returnSlide.current = null;
         };
-    }, [flip, reducedMotion]);
+    }, [flip, reducedMotion, bindingReady]);
 
     const count = projects.length;
 
     // Swipe paging, single column only: touch and pen, never the mouse.
     // The page follows the finger (unless motion is reduced), then changes or springs back.
     const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
-        if (e.pointerType === 'mouse' || !e.isPrimary) return;
+        if (e.pointerType === 'mouse' || !e.isPrimary || window.getSelection()?.isCollapsed === false) return;
         stopClickGuard.current?.();
         spring.current?.cancel();
         spring.current = null;
@@ -551,29 +629,23 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
 
     if (layout === 'single') {
         return (
-            <div ref={rootRef} onKeyDown={onKeyDown}>
+            <div ref={rootRef} onKeyDown={onKeyDown} data-notepad="" style={viewStyle}>
                 {liveRegion}
+                <AngleTweaker view={view} onChange={setView} />
                 {/* On phones (below sm) the notepad bleeds 8px into the site's outer gutters, so the paper sits 16px
                     from each screen edge as designed. Measured width stays the root's, so the layout can't feed back. */}
-                <div className="relative -mx-2 sm:mx-0">
-                    {/* Behind the paper, its top tucked under the bottom edge. It spans the whole column, not just the
-                        capped paper, and runs 16px further right: to the screen edge on phones, through the section's
-                        gutter from sm up. Taller on fine pointers to make room for the thin scrollbar under the tabs. */}
-                    <div
-                        className="absolute -right-4 h-16 pointer-fine:h-[76px]"
-                        style={{
-                            left: S_STRIP_LEFT - S_STRIP_PAD_LEFT,
-                            top: `calc(${S_PAPER_TOP - S_STRIP_TUCK}px + ${S_PAPER_HEIGHT})`,
-                        }}
-                    >
-                        <TabStrip projects={projects} page={page} onPick={pickTab} />
-                    </div>
-
-                    <div style={{ maxWidth: S_MAX_WIDTH }}>
+                <div className="relative -mx-2 sm:mx-0" style={{ perspective: 'var(--notebook-perspective, 1800px)' }}>
+                    <div data-notebook-surface="" className="relative" style={{ maxWidth: S_MAX_WIDTH, ...NOTEBOOK_ANGLE }}>
+                        <div
+                            className="absolute right-0 z-0"
+                            style={{ top: S_PAPER_TOP + 28, width: S_SIDE_WIDTH + 8, height: `calc(${S_PAPER_HEIGHT} - 36px)` }}
+                        >
+                            <TabStrip projects={projects} page={page} onPick={pickTab} />
+                        </div>
                         {/* Only a positioning box: it spans the strip's area too, so it lets taps through to the tabs */}
                         <div
                             className="pointer-events-none relative shrink-0"
-                            style={{ height: `calc(${S_PAPER_TOP}px + ${S_PAPER_HEIGHT} + ${S_BELOW_PAPER}px)` }}
+                            style={{ height: `calc(${S_PAPER_TOP}px + ${S_PAPER_HEIGHT} + ${S_BELOW_PAPER}px)`, marginRight: S_SIDE_WIDTH }}
                         >
                             <div
                                 ref={sheetRef}
@@ -597,9 +669,10 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
 
                                 {/* copies of pages, drawn over the real one while it changes */}
                                 {flipLayers(SINGLE_PAPER, { inset: 0 })}
+                                <BindingLayer key={Math.round(width)} ref={bindingRef} compact onReady={(ready) => { setBindingReady(ready); if (!ready) setFlip(null); }} />
                             </div>
 
-                            <div className="absolute top-0" style={{ left: S_RING_INSET, right: S_RING_INSET }}>
+                            <div className="absolute top-0" style={{ left: S_RING_INSET, right: S_RING_INSET, visibility: bindingReady ? 'hidden' : undefined }}>
                                 <Spiral rings={12} ringWidth={10} ringHeight={28} />
                             </div>
                         </div>
@@ -610,10 +683,12 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
     }
 
     return (
-        <div ref={rootRef} onKeyDown={onKeyDown}>
+        <div ref={rootRef} onKeyDown={onKeyDown} data-notepad="" style={viewStyle}>
             {liveRegion}
+            <AngleTweaker view={view} onChange={setView} />
             {/* isolate: a page turning behind the pad stays inside the notepad */}
-            <div className="relative isolate" style={{ height: FRAME_HEIGHT }}>
+            <div style={{ perspective: 'var(--notebook-perspective, 1800px)' }}>
+            <div data-notebook-surface="" className="relative isolate" style={{ height: FRAME_HEIGHT, ...NOTEBOOK_ANGLE }}>
                 {/* the pages stacked behind */}
                 {STACK_OFFSETS.map((offset, k) => (
                     <div
@@ -625,7 +700,7 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
                             top: PAPER_TOP + offset,
                             width: paperWidth,
                             height: PAPER_HEIGHT,
-                            background: k === 0 ? '#1f303c' : '#1b2a35',
+                            background: k === 0 ? 'var(--notebook-stack)' : 'var(--notebook-deepStack)',
                         }}
                     />
                 ))}
@@ -647,11 +722,15 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
 
                 {/* copies of pages, drawn over the real one while it changes */}
                 {flipLayers(PAPER, { left: 0, top: PAPER_TOP, width: paperWidth, height: PAPER_HEIGHT })}
+                <div className="pointer-events-none absolute" style={{ left: 0, top: PAPER_TOP, width: paperWidth, height: PAPER_HEIGHT }}>
+                    <BindingLayer key={Math.round(width)} ref={bindingRef} compact={false} onReady={(ready) => { setBindingReady(ready); if (!ready) setFlip(null); }} />
+                </div>
 
                 {/* over the pages while they turn up past them (above any run's depth) */}
-                <div className="absolute top-0 z-50" style={{ left: RING_INSET, width: paperWidth - 2 * RING_INSET }}>
+                <div className="absolute top-0 z-50" style={{ left: RING_INSET, width: paperWidth - 2 * RING_INSET, visibility: bindingReady ? 'hidden' : undefined }}>
                     <Spiral rings={Math.round(paperWidth / 41)} ringWidth={12} ringHeight={34} />
                 </div>
+            </div>
             </div>
         </div>
     );

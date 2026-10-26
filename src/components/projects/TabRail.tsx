@@ -3,7 +3,7 @@ import { useProjectNavigation } from './useProjectNavigation';
 import { tabId } from './tabNavigation';
 import MoreStack from './MoreStack';
 import { splitTabs } from './pinnedProjects';
-import { TWO_TONE, type Project } from './projectsData';
+import type { Project } from './projectsData';
 import { TAB_TUCK, TAB_WIDTH, ACTIVE_TAB_WIDTH } from './notepadGeometry';
 
 export { TAB_TUCK } from './notepadGeometry';
@@ -40,7 +40,6 @@ export default function TabRail({
                 {pages.map((p, k) => {
                     const selected = p === page;
                     const project = projects[p];
-                    const { light } = TWO_TONE[project.color];
                     return (
                         <button
                             key={p}
@@ -62,7 +61,7 @@ export default function TabRail({
                             style={{
                                 width: selected ? ACTIVE_TAB_WIDTH : TAB_WIDTH,
                                 paddingLeft: TAB_TUCK + 12,
-                                background: light,
+                                background: `var(--notebook-tab-${p % 5})`,
                             }}
                         >
                             <ProjectTabLabel project={project} />

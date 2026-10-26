@@ -16,6 +16,7 @@ export type Project = {
     featured?: boolean;
     color: ProjectColor;
     sticker?: StickerId;
+    images?: { src: string; alt: string; width: number; height: number }[];
 };
 
 // Each coloured shape is split vertically: left half light, right half shade.
@@ -44,6 +45,7 @@ export const PROJECTS: Project[] = [
         featured: true,
         color: 'blue',
         sticker: 'mosaic',
+        images: [{ src: '/assets/projects/mosaic_1-cropped.webp', alt: 'Mosaic app showing a shared photo mosaic and weekly challenge progress', width: 1170, height: 2382 }],
     },
     {
         slug: 'true-talent',
@@ -77,6 +79,7 @@ export const PROJECTS: Project[] = [
         },
         color: 'coral',
         sticker: 'morii',
+        images: [{ src: '/assets/projects/morii_1.webp', alt: 'Morii promotional artwork showing its mood-sharing feed', width: 459, height: 998 }],
     },
     {
         slug: 'btd-training-camp',
@@ -92,6 +95,10 @@ export const PROJECTS: Project[] = [
         link: { href: 'https://diandyw.github.io/BTDTrainingCamp/', label: 'Play in the browser' },
         color: 'yellow',
         sticker: 'btd',
+        images: [
+            { src: '/assets/projects/btd_1.webp', alt: 'Bloon TD Training Camp first-person gameplay with balloons and a machine gun', width: 3420, height: 1862 },
+            { src: '/assets/projects/btd_2.webp', alt: 'Bloon TD Training Camp title screen with play, settings, and leaderboard options', width: 3420, height: 1868 },
+        ],
     },
     {
         slug: 'temple-of-doom',

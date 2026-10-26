@@ -25,7 +25,8 @@ export const S_STRIP_LEFT = 10;
 export const S_STRIP_PAD_LEFT = 4; // TabStrip's own left padding, so the first tab still starts 10px in
 export const S_RING_INSET = 20;
 // How far the tab strip hangs below the paper
-export const S_BELOW_PAPER = S_STRIP_HEIGHT - S_STRIP_TUCK;
+export const S_BELOW_PAPER = 0;
+export const S_SIDE_WIDTH = 40;
 // Wider than this, lines on the page get long, so the paper stops growing and stays left-aligned
 export const S_MAX_WIDTH = 560;
 

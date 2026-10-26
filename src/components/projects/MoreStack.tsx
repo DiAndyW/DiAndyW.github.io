@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import ProjectTabLabel from './ProjectTabLabel';
 import { useProjectNavigation } from './useProjectNavigation';
-import { TWO_TONE, type Project } from './projectsData';
+import type { Project } from './projectsData';
 
 const SLIVERS = 5;
 const SLIVER_STEP = 6; // vertical offset between slivers
@@ -162,7 +162,6 @@ export default function MoreStack({
             >
                 {/* back to front, so the first (top) sliver is drawn last */}
                 {[...slivers].reverse().map(({ p, k }) => {
-                    const { light } = TWO_TONE[projects[p].color];
                     return (
                         <span
                             key={p}
@@ -172,7 +171,7 @@ export default function MoreStack({
                                 top: k * SLIVER_STEP,
                                 width: SLIVER_WIDTH - k * SLIVER_SHRINK,
                                 height: TAB_HEIGHT,
-                                background: light,
+                                background: `var(--notebook-tab-${p % 5})`,
                             }}
                         />
                     );
@@ -193,17 +192,16 @@ export default function MoreStack({
                     aria-label="More projects"
                     data-more-list=""
                     onKeyDown={onListKeyDown}
-                    className="absolute left-0 z-20 box-border flex flex-col gap-1.5 rounded-r-[12px] border border-l-0 border-[rgba(123,179,209,.5)] bg-[#17232c] py-2 pl-0 pr-2"
+                    className="absolute left-0 z-20 box-border flex flex-col gap-1.5 rounded-r-[12px] border border-l-0 border-[var(--notebook-border)] bg-[var(--notebook-paper)] py-2 pl-0 pr-2"
                     style={{ top: -PANEL_RISE, width: PANEL_WIDTH, height: PANEL_HEIGHT }}
                 >
                     <div className="flex items-baseline justify-between pb-0.5 pl-3.5 pr-2.5 pt-1">
-                        <span className="text-[11px] font-semibold uppercase tracking-[.08em] text-[#7bb3d1]">More projects</span>
-                        <span className="text-[11px] text-[#9ca3af]">{rest.length} more</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-[.08em] text-[color:var(--notebook-accent)]">More projects</span>
+                        <span className="text-[11px] text-[color:var(--notebook-secondary)]">{rest.length} more</span>
                     </div>
                     <div ref={bodyRef} className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto pr-1">
                         {rest.map((p, k) => {
                             const project = projects[p];
-                            const { light } = TWO_TONE[project.color];
                             return (
                                 <button
                                     key={p}
@@ -221,7 +219,7 @@ export default function MoreStack({
                                         onPick(p);
                                     }}
                                     className="relative flex w-full flex-none cursor-pointer items-center gap-1.5 overflow-hidden rounded-r-[10px] border-0 pl-3.5 pr-3 text-left text-xs font-semibold leading-none text-[#1f2937] hover:brightness-[.9] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#1f2937]"
-                                    style={{ height: TAB_HEIGHT, background: light }}
+                                    style={{ height: TAB_HEIGHT, background: `var(--notebook-tab-${p % 5})` }}
                                 >
                                     <ProjectTabLabel project={project} />
                                 </button>
