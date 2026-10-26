@@ -67,7 +67,7 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
         className={`
           w-14 h-14 bg-[#2d4a57]/80 text-white rounded-full shadow-lg
           transition-all duration-300 hover:scale-110 active:scale-95
-          flex items-center justify-center mt-3 pointer-events-auto
+          flex items-center justify-center mt-1 pointer-events-auto
           hover:bg-[#5d97b3]/80 focus:outline-none focus:ring-2 focus:ring-[#7bb3d1]
           ${isExpanded ? 'rotate-0 bg-[#5d97b3]' : 'rotate-0'}
         `}
@@ -84,8 +84,8 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
           <div className={`absolute inset-0 transition-all duration-300 ${
             isExpanded ? 'opacity-100 rotate-0' : 'opacity-0 rotate-90'
           }`}>
-            <div className="w-6 h-0.5 bg-white absolute top-3.5 left-0 rounded rotate-45 origin-center"></div>
-            <div className="w-6 h-0.5 bg-white absolute top-3.5 left-0 rounded -rotate-45 origin-center"></div>
+            <div className="w-6 h-0.5 bg-white absolute top-1/2 -translate-y-1/2 left-0 rounded rotate-45 origin-center"></div>
+            <div className="w-6 h-0.5 bg-white absolute top-1/2 -translate-y-1/2 left-0 rounded -rotate-45 origin-center"></div>
           </div>
         </div>
       </button>

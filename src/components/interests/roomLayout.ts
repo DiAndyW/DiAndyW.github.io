@@ -154,6 +154,7 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t:
 }
 
 export const easeSwoop = cubicBezier(0.7, 0, 0.2, 1);
+export const easeReturn = (t: number) => 1 - easeSwoop(1 - t);
 
 const PULSE_MS = 4000;
 

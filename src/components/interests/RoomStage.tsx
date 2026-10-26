@@ -21,13 +21,17 @@ function imageBox(vp: Viewport) {
 
 export default function RoomStage(props: {
     transitionFrom?: ViewportBounds | null;
+    returnBounds?: ViewportBounds | null;
+    onReturnComplete?: () => void;
     focus: InterestId | null;
     // The open panel is the phone's bottom sheet, so the object frames above it
     sheet: boolean;
     onPick: (id: InterestId, opener: HTMLButtonElement) => void;
     reducedMotion: boolean;
 }) {
-    const { focus, sheet, onPick, reducedMotion, transitionFrom } = props;
+    const { focus, sheet, onPick, reducedMotion, transitionFrom, returnBounds, onReturnComplete } = props;
+    const returnCompleteRef = useRef(onReturnComplete);
+    returnCompleteRef.current = onReturnComplete;
     const weather = useRoomWeather();
     const weatherRef = useRef(weather);
     weatherRef.current = weather;
@@ -152,7 +156,11 @@ export default function RoomStage(props: {
     }, [sheet]);
 
     useLayoutEffect(() => {
-        sceneRef.current?.setFocus(focus, transitionFrom ?? undefined);
+        let cancelled = false;
+        const arrival = sceneRef.current?.setFocus(focus, transitionFrom ?? undefined, returnBounds ?? undefined);
+        if (returnBounds) Promise.resolve(arrival).then(() => {
+            if (!cancelled) returnCompleteRef.current?.();
+        });
         if (focus) {
             hoverRef.current = null;
             setHover(null);
@@ -160,7 +168,8 @@ export default function RoomStage(props: {
         }
         // The source bounds belong to the focus change, rather than subsequent resizes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [focus]);
+        return () => { cancelled = true; };
+    }, [focus, returnBounds]);
 
     const hoverOn = (id: InterestId | null) => {
         hoverRef.current = id;
@@ -205,7 +214,7 @@ export default function RoomStage(props: {
                     }}
                     type="button"
                     aria-label={buttonLabel}
-                    disabled={focus !== null}
+                    disabled={focus !== null || !!returnBounds}
                     onClick={(e) => onPick(id, e.currentTarget)}
                     onMouseEnter={() => hoverOn(id)}
                     onMouseLeave={() => hoverOn(null)}

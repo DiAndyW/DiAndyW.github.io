@@ -9,7 +9,9 @@ export function Header() {
     };
 
     return (
-        <div id="main-header" className="flex justify-center sticky top-0 z-50 bg-gray-900">
+        <>
+        <div className="h-24 md:hidden" aria-hidden="true" />
+        <div id="main-header" className="flex justify-center fixed inset-x-0 top-0 md:sticky z-50 bg-gray-900">
             <header className="w-full md:w-7/10 mt-6 mb-2">
                 <div className="px-4 md:px-6 py-4">
                     <div className="grid grid-cols-12 items-center">
@@ -37,5 +39,6 @@ export function Header() {
                 </div>
             </header>
         </div>
+        </>
     );
 }

@@ -8,6 +8,7 @@ import {
     INTEREST_IDS,
     SHELL_POINTS,
     easeSwoop,
+    easeReturn,
     focusFrame,
     glowAt,
     lerpFrame,
@@ -25,6 +26,20 @@ const PHONE: Viewport = { width: 390, height: 844 };
 
 const close = (a: number, b: number, eps: number, msg?: string) =>
     assert.ok(Math.abs(a - b) <= eps, `${msg ?? ''} expected ${b}, got ${a}`);
+
+test('return camera retraces the opening camera at every mirrored time', () => {
+    const inline = { left: 8, top: 180, width: 359, height: 449 };
+    const fullscreen = { left: 0, top: 0, width: 375, height: 812 };
+    const rest = reframeViewport(restFrame(inline), inline, fullscreen);
+    const focused = focusFrame('music', fullscreen, true);
+    for (let i = 0; i <= 100; i++) {
+        const t = i / 100;
+        const opening = lerpFrame(rest, focused, easeSwoop(1 - t));
+        const returning = lerpFrame(focused, rest, easeReturn(t));
+        close(returning.zoom, opening.zoom, 1e-9);
+        returning.target.forEach((value, axis) => close(value, opening.target[axis], 1e-9));
+    }
+});
 
 test('rest frame fits the shell with a 4% margin', () => {
     for (const vp of [DESKTOP, MOBILE, PHONE]) {

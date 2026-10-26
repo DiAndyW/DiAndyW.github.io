@@ -7,6 +7,7 @@ import {
     SWOOP_MS,
     VIEW_HEIGHT,
     easeSwoop,
+    easeReturn,
     focusFrame,
     glowAt,
     lerpFrame,
@@ -24,7 +25,7 @@ import { timeOfDay, type WindowState } from '../weather';
 
 export type RoomScene = {
     setWeather: (state: WindowState, visible: boolean) => void;
-    setFocus: (id: InterestId | null, fromBounds?: ViewportBounds) => Promise<void>; // resolves when the camera arrives
+    setFocus: (id: InterestId | null, fromBounds?: ViewportBounds, returnBounds?: ViewportBounds) => Promise<void>; // resolves when the camera arrives
     setHover: (id: InterestId | null) => void;
     setPointer: (nx: number, ny: number) => void; // -1..1 within the stage, for parallax
     setActive: (active: boolean) => void; // false stops the rAF loop
@@ -79,7 +80,9 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
 
     const finePointer = window.matchMedia('(pointer: fine)').matches;
     const vp = (): Viewport => ({ width: canvas.clientWidth || 1, height: canvas.clientHeight || 1 });
-    const goal = (v: Viewport) => (focus ? focusFrame(focus, v, sheet) : restFrame(v));
+    let returnBounds: ViewportBounds | undefined;
+    const goal = (v: Viewport) => focus ? focusFrame(focus, v, sheet)
+        : returnBounds ? reframeViewport(restFrame(returnBounds), returnBounds, canvas.getBoundingClientRect()) : restFrame(v);
 
     let focus: InterestId | null = null;
     let sheet = false;
@@ -103,7 +106,7 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
     const cameraFrame = (now: number, v: Viewport): CameraFrame => {
         if (!tween) return goal(v);
         const t = Math.min(1, (now - tween.start) / SWOOP_MS);
-        const frame = lerpFrame(tween.from, goal(v), easeSwoop(t));
+        const frame = lerpFrame(tween.from, goal(v), focus ? easeSwoop(t) : easeReturn(t));
         if (t >= 1) {
             tween.resolve();
             tween = null;
@@ -221,7 +224,7 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
         setWeather: (state, visible) => {
             weather.set(state, performance.now(), reducedMotion, visible && document.visibilityState !== 'hidden');
         },
-        setFocus: (id, fromBounds) => {
+        setFocus: (id, fromBounds, destinationBounds) => {
             tween?.resolve();
             tween = null;
             const previous = lastFrame ?? goal(vp());
@@ -229,6 +232,7 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
                 ? reframeViewport(previous, fromBounds, canvas.getBoundingClientRect())
                 : previous;
             focus = id;
+            returnBounds = destinationBounds;
             if (reducedMotion) {
                 render(performance.now());
                 return Promise.resolve();

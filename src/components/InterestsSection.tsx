@@ -3,7 +3,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import RoomStage from './interests/RoomStage';
 import { INTERESTS } from './interests/interestsData';
-import { HIT_BOXES, restFrame, screenRect, type InterestId } from './interests/roomLayout';
+import { HIT_BOXES, SWOOP_MS, restFrame, screenRect, type InterestId } from './interests/roomLayout';
 import { panelStyle, type PanelPhase } from './interests/panelMotion';
 import { useInterestData } from './interests/useInterestData';
 import CatsPanel from './interests/panels/CatsPanel';
@@ -25,6 +25,8 @@ export default function InterestsSection() {
     const [compact, setCompact] = useState(false);
     const [reducedMotion, setReducedMotion] = useState(false);
     const [dragY, setDragY] = useState(0);
+    const [returnBounds, setReturnBounds] = useState<DOMRect | null>(null);
+    const stageRef = useRef<HTMLDivElement>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
     const roomRef = useRef<HTMLDivElement>(null);
     const transitionRect = useRef<DOMRect | null>(null);
@@ -58,6 +60,7 @@ export default function InterestsSection() {
 
     const close = () => {
         if (compact) transitionRect.current = roomRef.current?.getBoundingClientRect() ?? null;
+        if (compact && !reducedMotion) setReturnBounds(stageRef.current?.getBoundingClientRect() ?? null);
         setFocus(null);
         setPhase('hidden');
         setDragY(0);
@@ -78,11 +81,11 @@ export default function InterestsSection() {
         if (focus) {
             document.getElementById(`${focus}-panel-title`)?.focus({ preventScroll: true });
             opened.current = true;
-        } else if (opened.current) {
+        } else if (opened.current && !returnBounds) {
             opened.current = false;
             returnTo.current?.focus({ preventScroll: true });
         }
-    }, [focus]);
+    }, [focus, returnBounds]);
 
     useEffect(() => {
         if (!focus) return;
@@ -94,7 +97,7 @@ export default function InterestsSection() {
     }, [focus]);
 
     // On a phone the room takes the whole screen while a panel is open, so the page stops scrolling
-    const fullScreen = compact && focus !== null;
+    const fullScreen = compact && (focus !== null || returnBounds !== null);
     useLayoutEffect(() => {
         if (!fullScreen || !focus) return;
         const title = document.getElementById(`${focus}-panel-title`);
@@ -174,20 +177,32 @@ export default function InterestsSection() {
         <div ref={wrapRef} className="mt-8 font-normal">
             <h1 className="p-2 text-3xl sm:p-4 sm:text-4xl lg:text-5xl">Interests</h1>
 
-            <div className={`relative mx-auto w-full max-w-[1000px] ${compact ? 'aspect-[4/5]' : 'aspect-[25/17]'}`}>
+            <div ref={stageRef} className={`relative mx-auto w-full max-w-[1000px] ${compact ? 'aspect-[4/5]' : 'aspect-[25/17]'}`}>
                 <div
                     ref={roomRef}
                     tabIndex={-1}
                     role={fullScreen ? 'dialog' : undefined}
                     aria-modal={fullScreen ? true : undefined}
-                    aria-labelledby={fullScreen ? `${focus}-panel-title` : undefined}
+                    aria-labelledby={fullScreen && focus ? `${focus}-panel-title` : undefined}
+                    aria-label={fullScreen && !focus ? 'Interests room' : undefined}
                     className={
                         fullScreen
-                            ? 'fixed inset-0 z-[60] h-[100dvh] overflow-hidden bg-[#111827]'
+                            ? 'fixed inset-0 z-[60] h-[100dvh] overflow-hidden'
                             : 'absolute inset-0 overflow-hidden rounded-2xl bg-[#111827]'
                     }
                 >
-                    <RoomStage transitionFrom={transitionRect.current} focus={focus} sheet={compact} onPick={open} reducedMotion={reducedMotion} />
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 bg-[#111827]"
+                        style={{
+                            opacity: returnBounds ? 0 : 1,
+                            transition: reducedMotion ? 'none' : `opacity ${SWOOP_MS}ms cubic-bezier(.8,0,.3,1)`,
+                        }}
+                    />
+                    <RoomStage transitionFrom={transitionRect.current} returnBounds={returnBounds} onReturnComplete={() => {
+                        transitionRect.current = roomRef.current?.getBoundingClientRect() ?? null;
+                        setReturnBounds(null);
+                    }} focus={focus} sheet={compact} onPick={open} reducedMotion={reducedMotion} />
 
                     {focus && (
                         <button
