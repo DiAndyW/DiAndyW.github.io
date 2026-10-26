@@ -18,7 +18,7 @@ export function FriendsSection() {
         {
             id: 4,
             name: "Charlton Shih",
-            link: "https://chewton2k.github.io/CharltonShih/",
+            link: "https://www.charltonshih.com/",
         },
         {
             id: 5,
@@ -39,7 +39,7 @@ export function FriendsSection() {
 
     return (
         <div className="flex items-center">
-            <div className="mt-8 font-normal">
+            <div className="mt-8 w-full font-normal">
                 <div className="text-3xl sm:text-4xl lg:text-5xl p-2 sm:p-4">
                     Friends
                 </div>
@@ -47,12 +47,13 @@ export function FriendsSection() {
                     A list of other awesome people!
                 </h2>
 
-                <div className="px-4">
+                <div className="grid w-full max-w-md grid-cols-2 gap-x-4 px-4">
                     {People.map((item) => (
                         <div
                             key={item.id}
+                            className="border-b border-white/10"
                         >
-                            • <a href={item.link} target="_blank" rel="noopener noreferrer" className="underline text-[#5d97b3] hover:text-[#7bb3d1]">{item.name}</a>
+                            <a href={item.link} target="_blank" rel="noopener noreferrer" className="block py-2 text-sm text-[#5d97b3] transition-colors duration-200 hover:text-[#7bb3d1]">{item.name}</a>
                         </div>
                     ))}
                 </div>

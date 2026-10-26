@@ -1,18 +1,15 @@
 import * as THREE from 'three';
-import { WINDOW_VIEW } from './palette';
+import { exteriorFor, EXTERIOR_PATHS, REFLECT_PATHS, STARS } from './windowWeatherPalette';
+import { WINDOW_GLASS } from './roomSurfaces';
+import type { WeatherFrame } from '../weatherTransition';
 
-export type WindowView = { mesh: THREE.Mesh; update: (nowMs: number) => void; dispose: () => void };
+export type WindowView = { mesh: THREE.Mesh; update: (nowMs: number, frame: WeatherFrame) => void; dispose: () => void };
 
 // The view through the glass is painted, not modelled: drawn in the design's 100 × 82.4 glass units.
 const GLASS_W = 100;
 const GLASS_H = 82.4;
 const PX = 4;
 
-const CLOUD_BACK = 'M-4 22 C8 14 18 18 26 14 C36 8 50 12 58 9 C70 4 84 10 104 6 L104 -4 L-4 -4 Z';
-const CLOUD_FRONT = 'M-4 10 C10 6 22 8 34 4 C46 0 60 4 74 1 C86 -2 96 2 104 0 L104 -4 L-4 -4 Z';
-const TREES_BACK =
-    'M-4 86 L-4 64 C2 58 8 58 12 62 C16 54 24 54 28 61 C33 57 39 57 43 63 C48 56 56 56 60 62 C64 58 70 58 74 63 C79 55 88 55 92 61 C96 58 100 58 104 61 L104 86 Z';
-const TREES_FRONT = 'M-4 86 L-4 72 C6 68 16 70 24 73 C36 67 50 68 60 72 C72 67 86 68 104 71 L104 86 Z';
 const DROPS = [
     [18, 30],
     [66, 18],
@@ -29,33 +26,75 @@ const STREAKS = Array.from({ length: 13 }, (_, i) => {
 });
 
 // Window glass, in world units (on the left wall, facing +X)
-export const GLASS = { zMin: 2.2, zMax: 5.6, yMin: 2.0, yMax: 4.8 } as const;
+export const GLASS = WINDOW_GLASS;
 
 export function createWindowView(reducedMotion: boolean): WindowView {
     const canvas = document.createElement('canvas');
     canvas.width = GLASS_W * PX;
     canvas.height = Math.round(GLASS_H * PX);
     const g = canvas.getContext('2d')!;
-    const paths = [CLOUD_BACK, CLOUD_FRONT, TREES_BACK, TREES_FRONT].map((d) => new Path2D(d));
-    const fills = [WINDOW_VIEW.cloudBack, WINDOW_VIEW.cloudFront, WINDOW_VIEW.treesBack, WINDOW_VIEW.treesFront];
-
-    const draw = (nowMs: number) => {
-        g.setTransform(PX, 0, 0, PX, 0, 0);
-        g.fillStyle = WINDOW_VIEW.sky;
+    const paths = Object.fromEntries(Object.entries(EXTERIOR_PATHS).map(([key, d]) => [key, new Path2D(d)]));
+    const drawState = (g: CanvasRenderingContext2D, state: WeatherFrame['to']) => {
+        const c = exteriorFor(state);
+        g.globalAlpha = 1;
+        g.fillStyle = c.sky;
         g.fillRect(0, 0, GLASS_W, GLASS_H);
-        paths.forEach((p, i) => {
-            g.fillStyle = fills[i];
-            g.fill(p);
-        });
-
-        g.strokeStyle = WINDOW_VIEW.rain;
+        const fill = (path: string, color: string | null) => {
+            if (!color) return;
+            g.save();
+            if (REFLECT_PATHS.has(path)) { g.translate(GLASS_W, 0); g.scale(-1, 1); }
+            g.fillStyle = color;
+            g.fill(paths[path]);
+            g.restore();
+        };
+        fill('horizon', c.horizon);
+        if (state.weather === 'clear' && state.time === 'night') {
+            g.fillStyle = STARS.color;
+            for (const [x, y, r] of STARS.dots) {
+                g.beginPath(); g.arc(GLASS_W - x, y, r, 0, Math.PI * 2); g.fill();
+            }
+        } else if (state.weather === 'clear') {
+            fill('puffBack', c.cloudBack); fill('puffFront', c.cloudFront);
+        } else if (state.weather === 'cloudy') {
+            fill('heavyBack', c.cloudBack); fill('cloudyUpper', c.cloudFront);
+        } else {
+            fill('cloudBack', c.cloudBack); fill('cloudFront', c.cloudFront);
+        }
+        fill('treesBack', c.treesBack); fill('treesFront', c.treesFront);
+    };
+    // Draw each complete opaque exterior on its own layer: applying alpha per shape would
+    // let the old sky leak through the new trees/clouds during a transition.
+    const layer = document.createElement('canvas');
+    layer.width = canvas.width; layer.height = canvas.height;
+    const layerContext = layer.getContext('2d')!;
+    const mixColor = (a: string, b: string, t: number) => {
+        const x = new THREE.Color(a), y = new THREE.Color(b);
+        return `#${x.lerp(y, t).getHexString()}`;
+    };
+    const draw = (nowMs: number, frame: WeatherFrame) => {
+        g.setTransform(PX, 0, 0, PX, 0, 0);
+        drawState(g, frame.from);
+        if (frame.animating && frame.mix > 0) {
+            layerContext.setTransform(PX, 0, 0, PX, 0, 0);
+            drawState(layerContext, frame.to);
+            g.setTransform(1, 0, 0, 1, 0, 0);
+            g.globalAlpha = frame.mix;
+            g.drawImage(layer, 0, 0);
+            g.setTransform(PX, 0, 0, PX, 0, 0);
+        }
+        g.globalAlpha = 1;
+        if (!frame.rain) return;
+        const old = exteriorFor(frame.from), next = exteriorFor(frame.to);
+        const rainyColor = (key: 'rain' | 'drop') => frame.from.weather !== 'rainy' ? next[key]
+            : frame.to.weather !== 'rainy' ? old[key] : mixColor(old[key], next[key], frame.mix);
+        g.strokeStyle = rainyColor('rain');
         g.lineWidth = 0.8;
         g.lineCap = 'round';
         for (const s of STREAKS) {
             const loop = s.dash + s.gap;
             // Matches the design's stroke-dashoffset animation: 46 units per loop
             const offset = reducedMotion ? 0 : (((nowMs + s.delay) % s.period) / s.period) * 46;
-            g.globalAlpha = s.opacity;
+            g.globalAlpha = s.opacity * frame.rain;
             g.setLineDash([s.dash, s.gap]);
             g.lineDashOffset = -offset % loop;
             g.beginPath();
@@ -65,8 +104,8 @@ export function createWindowView(reducedMotion: boolean): WindowView {
         }
         g.setLineDash([]);
 
-        g.globalAlpha = 0.45;
-        g.fillStyle = WINDOW_VIEW.drop;
+        g.globalAlpha = 0.45 * frame.rain;
+        g.fillStyle = rainyColor('drop');
         for (const [x, y] of DROPS) {
             g.beginPath();
             g.moveTo(x, y);
@@ -77,7 +116,7 @@ export function createWindowView(reducedMotion: boolean): WindowView {
         g.globalAlpha = 1;
     };
 
-    draw(0);
+    let lastKey = '';
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
 
@@ -90,9 +129,11 @@ export function createWindowView(reducedMotion: boolean): WindowView {
 
     return {
         mesh,
-        update: (nowMs) => {
-            if (reducedMotion) return;
-            draw(nowMs);
+        update: (nowMs, frame) => {
+            const key = JSON.stringify(frame);
+            if (key === lastKey && (reducedMotion || !frame.rain)) return;
+            lastKey = key;
+            draw(nowMs, frame);
             texture.needsUpdate = true;
         },
         dispose: () => {

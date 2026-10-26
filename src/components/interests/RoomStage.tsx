@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { INTERESTS } from './interestsData';
-import { HIT_BOXES, restFrame, screenRect, type CameraFrame, type InterestId, type Viewport } from './roomLayout';
+import { HIT_BOXES, restFrame, screenRect, type CameraFrame, type InterestId, type Viewport, type ViewportBounds } from './roomLayout';
 import type { RoomScene } from './scene/roomScene';
 import { focusShowsLabel, visibilityGate } from './stageState';
+import { useRoomWeather } from './useRoomWeather';
+import { roomDescription } from './weather';
 
 // The room image (a capture of the rest view at 1000×680). It shows until the 3D scene draws its first
 // frame, and stays as the fallback without WebGL.
@@ -18,14 +20,22 @@ function imageBox(vp: Viewport) {
 }
 
 export default function RoomStage(props: {
+    transitionFrom?: ViewportBounds | null;
+    returnBounds?: ViewportBounds | null;
+    onReturnComplete?: () => void;
     focus: InterestId | null;
     // The open panel is the phone's bottom sheet, so the object frames above it
     sheet: boolean;
-    onPick: (id: InterestId) => void;
+    onPick: (id: InterestId, opener: HTMLButtonElement) => void;
     reducedMotion: boolean;
-    onReady?: () => void;
 }) {
-    const { focus, sheet, onPick, reducedMotion, onReady } = props;
+    const { focus, sheet, onPick, reducedMotion, transitionFrom, returnBounds, onReturnComplete } = props;
+    const returnCompleteRef = useRef(onReturnComplete);
+    returnCompleteRef.current = onReturnComplete;
+    const weather = useRoomWeather();
+    const weatherRef = useRef(weather);
+    weatherRef.current = weather;
+    const visibleRef = useRef(false);
     const rootRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const buttonRefs = useRef<Partial<Record<InterestId, HTMLButtonElement | null>>>({});
@@ -41,9 +51,11 @@ export default function RoomStage(props: {
     const [hover, setHover] = useState<InterestId | null>(null);
     const [mode, setMode] = useState<'poster' | 'live' | 'fallback'>('poster');
     const [vp, setVp] = useState<Viewport>(IMAGE_VP);
+    const placedFrame = useRef<{ frame: CameraFrame; viewport: Viewport } | null>(null);
 
-    // Moves the overlay buttons and the pill; called every frame by the scene, or on resize without it
+    // Moves the overlay buttons and the pill on scene frames, resize, and hover changes.
     const place = useRef((frame: CameraFrame, v: Viewport) => {
+        placedFrame.current = { frame, viewport: v };
         for (const { id } of INTERESTS) {
             const button = buttonRefs.current[id];
             if (!button) continue;
@@ -89,7 +101,8 @@ export default function RoomStage(props: {
             try {
                 const { createRoomScene } = await import('./scene/roomScene');
                 if (cancelled) return;
-                scene = createRoomScene(canvasRef.current!, { reducedMotion: reducedRef.current });
+                scene = createRoomScene(canvasRef.current!, { reducedMotion: reducedRef.current, weather: weatherRef.current,
+                    hideGlows: process.env.NODE_ENV === 'development' && new URLSearchParams(window.location.search).get('roomGlows') === 'off' });
                 sceneRef.current = scene;
                 scene.setSheet(wanted.current.sheet);
                 if (wanted.current.focus) scene.setFocus(wanted.current.focus);
@@ -100,7 +113,6 @@ export default function RoomStage(props: {
                     if (first) {
                         first = false;
                         setMode('live');
-                        onReady?.();
                     }
                 });
             } catch {
@@ -115,7 +127,14 @@ export default function RoomStage(props: {
             { rootMargin: '200px' },
         );
         observer.observe(root);
+        // Actual intersection, separate from the 200px preload margin, controls weather transitions.
+        const visible = new IntersectionObserver(([entry]) => {
+            visibleRef.current = entry.isIntersecting;
+            if (!entry.isIntersecting) scene?.setWeather(weatherRef.current, false);
+        });
+        visible.observe(root);
         return () => {
+            visible.disconnect();
             cancelled = true;
             observer.disconnect();
             gate.detach();
@@ -127,22 +146,35 @@ export default function RoomStage(props: {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Before the focus effect, so a phone open frames for the sheet from the first frame
     useEffect(() => {
+        sceneRef.current?.setWeather(weather, visibleRef.current);
+    }, [weather]);
+
+    // Before the focus effect, so a phone open frames for the sheet from the first frame
+    useLayoutEffect(() => {
         sceneRef.current?.setSheet(sheet);
     }, [sheet]);
 
-    useEffect(() => {
-        sceneRef.current?.setFocus(focus);
+    useLayoutEffect(() => {
+        let cancelled = false;
+        const arrival = sceneRef.current?.setFocus(focus, transitionFrom ?? undefined, returnBounds ?? undefined);
+        if (returnBounds) Promise.resolve(arrival).then(() => {
+            if (!cancelled) returnCompleteRef.current?.();
+        });
         if (focus) {
             hoverRef.current = null;
             setHover(null);
             sceneRef.current?.setHover(null);
         }
-    }, [focus]);
+        // The source bounds belong to the focus change, rather than subsequent resizes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        return () => { cancelled = true; };
+    }, [focus, returnBounds]);
 
     const hoverOn = (id: InterestId | null) => {
         hoverRef.current = id;
+        const placed = placedFrame.current;
+        if (id && placed) place.current(placed.frame, placed.viewport);
         setHover(id);
         sceneRef.current?.setHover(id);
     };
@@ -164,14 +196,14 @@ export default function RoomStage(props: {
             {mode !== 'live' && (
                 <img
                     src={ROOM_IMAGE}
-                    alt="An illustrated room at night with a record player, a computer, a bowl of food on a small table, and an orange cat on a green rug, beside a rainy window"
+                    alt={roomDescription()}
                     className="pointer-events-none absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 select-none"
                     style={{ width: image.width, height: image.height }}
                     draggable={false}
                 />
             )}
             {mode !== 'fallback' && (
-                <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 block h-full w-full touch-pan-y" />
+                <canvas ref={canvasRef} role="img" aria-label={mode === 'live' ? roomDescription(weather) : undefined} aria-hidden={mode !== 'live'} className="absolute inset-0 block h-full w-full touch-pan-y" />
             )}
 
             {INTERESTS.map(({ id, buttonLabel }) => (
@@ -182,8 +214,8 @@ export default function RoomStage(props: {
                     }}
                     type="button"
                     aria-label={buttonLabel}
-                    disabled={focus !== null}
-                    onClick={() => onPick(id)}
+                    disabled={focus !== null || !!returnBounds}
+                    onClick={(e) => onPick(id, e.currentTarget)}
                     onMouseEnter={() => hoverOn(id)}
                     onMouseLeave={() => hoverOn(null)}
                     onFocus={(e) => focusShowsLabel(e.currentTarget) && hoverOn(id)}

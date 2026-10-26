@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import RoomStage from './interests/RoomStage';
 import { INTERESTS } from './interests/interestsData';
-import type { InterestId } from './interests/roomLayout';
+import { HIT_BOXES, SWOOP_MS, restFrame, screenRect, type InterestId } from './interests/roomLayout';
 import { panelStyle, type PanelPhase } from './interests/panelMotion';
 import { useInterestData } from './interests/useInterestData';
 import CatsPanel from './interests/panels/CatsPanel';
 import FoodPanel from './interests/panels/FoodPanel';
 import GamesPanel from './interests/panels/GamesPanel';
 import MusicPanel from './interests/panels/MusicPanel';
+import { containModalFocus } from './interests/modalFocus';
 
 // Below this stage width the room is the phone layout: a 4:5 stage that opens full-screen with a bottom sheet
 const MOBILE_WIDTH = 640;
@@ -24,8 +25,11 @@ export default function InterestsSection() {
     const [compact, setCompact] = useState(false);
     const [reducedMotion, setReducedMotion] = useState(false);
     const [dragY, setDragY] = useState(0);
+    const [returnBounds, setReturnBounds] = useState<DOMRect | null>(null);
+    const stageRef = useRef<HTMLDivElement>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
-    const tabRefs = useRef<Partial<Record<InterestId, HTMLButtonElement | null>>>({});
+    const roomRef = useRef<HTMLDivElement>(null);
+    const transitionRect = useRef<DOMRect | null>(null);
     const returnTo = useRef<HTMLElement | null>(null);
     const drag = useRef<{ y: number; time: number } | null>(null);
 
@@ -45,15 +49,18 @@ export default function InterestsSection() {
         return () => observer.disconnect();
     }, []);
 
-    const open = (id: InterestId) => {
+    const open = (id: InterestId, opener?: HTMLButtonElement) => {
         if (!focus) {
-            const active = document.activeElement;
-            returnTo.current = active instanceof HTMLElement && active !== document.body ? active : (tabRefs.current[id] ?? null);
+            if (compact) transitionRect.current = roomRef.current?.getBoundingClientRect() ?? null;
+            const active = opener ?? document.activeElement;
+            returnTo.current = active instanceof HTMLElement && active !== document.body ? active : roomRef.current;
         }
         setFocus(id);
     };
 
     const close = () => {
+        if (compact) transitionRect.current = roomRef.current?.getBoundingClientRect() ?? null;
+        if (compact && !reducedMotion) setReturnBounds(stageRef.current?.getBoundingClientRect() ?? null);
         setFocus(null);
         setPhase('hidden');
         setDragY(0);
@@ -74,11 +81,11 @@ export default function InterestsSection() {
         if (focus) {
             document.getElementById(`${focus}-panel-title`)?.focus({ preventScroll: true });
             opened.current = true;
-        } else if (opened.current) {
+        } else if (opened.current && !returnBounds) {
             opened.current = false;
             returnTo.current?.focus({ preventScroll: true });
         }
-    }, [focus]);
+    }, [focus, returnBounds]);
 
     useEffect(() => {
         if (!focus) return;
@@ -90,14 +97,42 @@ export default function InterestsSection() {
     }, [focus]);
 
     // On a phone the room takes the whole screen while a panel is open, so the page stops scrolling
-    const fullScreen = compact && focus !== null;
+    const fullScreen = compact && (focus !== null || returnBounds !== null);
+    useLayoutEffect(() => {
+        if (!fullScreen || !focus) return;
+        const title = document.getElementById(`${focus}-panel-title`);
+        if (roomRef.current && title) return containModalFocus(roomRef.current, title);
+    }, [fullScreen, focus]);
+
     useEffect(() => {
         if (!fullScreen) return;
         const scrollY = window.scrollY;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const overflow = document.documentElement.style.overflow;
         document.documentElement.style.overflow = 'hidden';
         return () => {
-            document.documentElement.style.overflow = '';
+            document.documentElement.style.overflow = overflow;
             window.scrollTo(0, scrollY);
+            if (window.innerWidth === width && window.innerHeight === height) return;
+            // Rotation reflows the page; the old offset may put the opener outside the viewport.
+            const opener = returnTo.current;
+            const room = roomRef.current;
+            const target = opener && !opener.matches(':disabled') && opener.getClientRects().length ? opener : room;
+            if (!target) return;
+            let rect: { top: number; bottom: number } = target.getBoundingClientRect();
+            const object = INTERESTS.find(({ buttonLabel }) => opener?.getAttribute('aria-label') === buttonLabel);
+            if (object && target === opener && room) {
+                // The camera is still returning; scroll for the object's final resting position.
+                const viewport = { width: room.clientWidth, height: room.clientHeight };
+                const hit = screenRect(HIT_BOXES[object.id], restFrame(viewport), viewport);
+                const top = room.getBoundingClientRect().top + hit.y * viewport.height;
+                rect = { top, bottom: top + hit.h * viewport.height };
+            }
+            const headerBottom = document.getElementById('main-header')?.getBoundingClientRect().bottom ?? 0;
+            if (rect.top < Math.max(0, headerBottom) || rect.bottom > window.innerHeight) {
+                window.scrollBy({ top: (rect.top + rect.bottom - window.innerHeight) / 2, behavior: 'instant' });
+            }
         };
     }, [fullScreen]);
 
@@ -141,19 +176,33 @@ export default function InterestsSection() {
     return (
         <div ref={wrapRef} className="mt-8 font-normal">
             <h1 className="p-2 text-3xl sm:p-4 sm:text-4xl lg:text-5xl">Interests</h1>
-            <p className="mt-2 mb-8 px-2 text-[15px] leading-[22px] text-[#9ca3af] sm:px-4">
-                A small room with a few of my favorite things, explore!
-            </p>
 
-            <div className={`relative mx-auto w-full max-w-[1000px] ${compact ? 'aspect-[4/5]' : 'aspect-[25/17]'}`}>
+            <div ref={stageRef} className={`relative mx-auto w-full max-w-[1000px] ${compact ? 'aspect-[4/5]' : 'aspect-[25/17]'}`}>
                 <div
+                    ref={roomRef}
+                    tabIndex={-1}
+                    role={fullScreen ? 'dialog' : undefined}
+                    aria-modal={fullScreen ? true : undefined}
+                    aria-labelledby={fullScreen && focus ? `${focus}-panel-title` : undefined}
+                    aria-label={fullScreen && !focus ? 'Interests room' : undefined}
                     className={
                         fullScreen
-                            ? 'fixed inset-0 z-[60] h-[100svh] overflow-hidden bg-[#111827]'
+                            ? 'fixed inset-0 z-[60] h-[100dvh] overflow-hidden'
                             : 'absolute inset-0 overflow-hidden rounded-2xl bg-[#111827]'
                     }
                 >
-                    <RoomStage focus={focus} sheet={compact} onPick={open} reducedMotion={reducedMotion} />
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 bg-[#111827]"
+                        style={{
+                            opacity: returnBounds ? 0 : 1,
+                            transition: reducedMotion ? 'none' : `opacity ${SWOOP_MS}ms cubic-bezier(.8,0,.3,1)`,
+                        }}
+                    />
+                    <RoomStage transitionFrom={transitionRect.current} returnBounds={returnBounds} onReturnComplete={() => {
+                        transitionRect.current = roomRef.current?.getBoundingClientRect() ?? null;
+                        setReturnBounds(null);
+                    }} focus={focus} sheet={compact} onPick={open} reducedMotion={reducedMotion} />
 
                     {focus && (
                         <button
@@ -188,42 +237,6 @@ export default function InterestsSection() {
                 </div>
             </div>
 
-            <div
-                className={
-                    compact
-                        ? 'mt-4 grid grid-cols-4'
-                        : 'mt-4 flex items-center justify-center gap-3'
-                }
-            >
-                {INTERESTS.map(({ id, label }, i) => (
-                    <React.Fragment key={id}>
-                        {!compact && i > 0 && (
-                            <span aria-hidden="true" className="text-[#4b5563] select-none">
-                                ·
-                            </span>
-                        )}
-                        <button
-                            ref={(el) => {
-                                tabRefs.current[id] = el;
-                            }}
-                            type="button"
-                            aria-pressed={focus === id}
-                            onClick={() => (focus === id ? close() : open(id))}
-                            className={`relative h-11 cursor-pointer px-1 text-sm font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7bb3d1] ${
-                                focus === id ? 'text-white' : 'text-[#9ca3af] hover:text-white'
-                            }`}
-                        >
-                            {label}
-                            <span
-                                aria-hidden="true"
-                                className={`absolute inset-x-1 bottom-2 h-0.5 rounded-full bg-[#7bb3d1] transition-opacity duration-200 ${
-                                    focus === id ? 'opacity-100' : 'opacity-0'
-                                }`}
-                            />
-                        </button>
-                    </React.Fragment>
-                ))}
-            </div>
         </div>
     );
 }

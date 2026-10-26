@@ -54,7 +54,7 @@ export const ANCHORS = Object.fromEntries(
 // Multipliers on the rest zoom
 export const FOCUS_ZOOM: Record<InterestId, number> = { music: 2.5, games: 2.4, food: 3.2, cats: 3.0 };
 export const SWOOP_MS = 850;
-export const GLOW_OFFSET_MS: Record<InterestId, number> = { music: 0, cats: -750, food: -1500, games: -2250 };
+export const GLOW_OFFSET_MS: Record<InterestId, number> = { music: 0, cats: -1000, food: -2000, games: -3000 };
 
 const REST_MARGIN = 0.04;
 // Where the focused object lands: left of the desktop panel, or above the phone's bottom sheet
@@ -86,6 +86,19 @@ export function restFrame(vp: Viewport): CameraFrame {
         (usable * VIEW_HEIGHT) / (maxY - minY),
     );
     return { target, zoom };
+}
+
+// Keep every world point at the same screen pixel when the canvas changes containers.
+// The camera then interpolates from this frame to the selected object without CSS scaling.
+export type ViewportBounds = Viewport & { left: number; top: number };
+export function reframeViewport(frame: CameraFrame, from: ViewportBounds, to: ViewportBounds): CameraFrame {
+    const pixelsPerUnit = from.height * frame.zoom / VIEW_HEIGHT;
+    const dx = (to.left + to.width / 2 - from.left - from.width / 2) / pixelsPerUnit;
+    const dy = (from.top + from.height / 2 - to.top - to.height / 2) / pixelsPerUnit;
+    return {
+        target: add(frame.target, add(scale(CAMERA_RIGHT, dx), scale(CAMERA_UP, dy))),
+        zoom: frame.zoom * from.height / to.height,
+    };
 }
 
 // `sheet` says whether the panel is the bottom sheet; it defaults to the phone layout's own test
@@ -141,12 +154,15 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t:
 }
 
 export const easeSwoop = cubicBezier(0.7, 0, 0.2, 1);
+export const easeReturn = (t: number) => 1 - easeSwoop(1 - t);
 
-const PULSE_MS = 3000;
+const PULSE_MS = 4000;
 
-export function glowAt(nowMs: number, id: InterestId, reducedMotion: boolean): { opacity: number; scale: number } {
-    if (reducedMotion) return { opacity: 0.23, scale: 1 };
+export function glowAt(nowMs: number, id: InterestId, reducedMotion: boolean, hoverAmount = 0): { opacity: number; scale: number } {
+    if (reducedMotion) return { opacity: 0.3, scale: 1 };
     const phase = ((((nowMs - GLOW_OFFSET_MS[id]) % PULSE_MS) + PULSE_MS) % PULSE_MS) / PULSE_MS;
     const k = (1 - Math.cos(2 * Math.PI * phase)) / 2;
-    return { opacity: 0.12 + 0.22 * k, scale: 0.96 + 0.07 * k };
+    // The disk and ring share this scale, so their edges stay aligned throughout the pulse.
+    const idleScale = 0.94 + 0.14 * k;
+    return { opacity: 0.3, scale: idleScale + (1.14 - idleScale) * hoverAmount };
 }
