@@ -10,7 +10,17 @@ import type { Project } from './projectsData';
 export default function ProjectDetailsSheet({ project, onClose }: { project: Project; onClose: () => void }) {
     const [imageIndex, setImageIndex] = useState<number | null>(null);
     return (
-        <DetailsSheet title={project.title} subtitle={project.org} closeLabel="Close project details" onClose={onClose}>
+        <DetailsSheet
+            title={project.title}
+            titleAction={project.link && (
+                <a href={project.link.href} target="_blank" rel="noopener noreferrer" aria-label={`${project.link.label}: ${project.title}`} className="inline-flex min-h-11 shrink-0 items-center rounded px-1 text-xs font-medium text-[color:var(--sheet-accent)] underline underline-offset-4 transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sheet-accent)]">
+                    Open
+                </a>
+            )}
+            subtitle={project.org}
+            closeLabel="Close project details"
+            onClose={onClose}
+        >
             <p className="mb-5 text-sm leading-relaxed">{project.description}</p>
             <ul className="mb-6 flex list-none flex-col gap-3 p-0">
                 {project.bullets.map((bullet) => (
@@ -26,7 +36,7 @@ export default function ProjectDetailsSheet({ project, onClose }: { project: Pro
                     <Image unoptimized src={image.src} alt={image.alt} width={image.width} height={image.height} sizes="180px" className="mx-auto block h-auto max-h-[220px] w-auto max-w-full object-contain" />
                 </button>
             ))}
-            {project.link ? <a href={project.link.href} target="_blank" rel="noopener noreferrer" className="inline-block py-2 text-xs text-[color:var(--notebook-accent)] underline underline-offset-4">{project.link.label}</a> : <p className="text-xs text-[color:var(--notebook-secondary)]">{project.status}</p>}
+            {!project.link && <p className="text-xs text-[color:var(--notebook-secondary)]">{project.status}</p>}
             {imageIndex !== null && project.images?.length ? <ProjectImageViewer project={project} initialIndex={imageIndex} onClose={() => setImageIndex(null)} /> : null}
         </DetailsSheet>
     );

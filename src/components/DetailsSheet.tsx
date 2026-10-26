@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useId, useRef, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { dismissProjectSheet } from './projects/projectSheet';
 import { notebookPaletteVariables } from './projects/notepadPalette';
@@ -8,8 +8,9 @@ import { notebookPaletteVariables } from './projects/notepadPalette';
 const SHEET_MS = 300;
 const SHEET_EASE = 'cubic-bezier(.2,.8,.2,1)';
 
-export default function DetailsSheet({ title, subtitle, children, closeLabel = 'Close details', theme = 'notebook', dismissAtWidth, onClose }: {
+export default function DetailsSheet({ title, titleAction, subtitle, children, closeLabel = 'Close details', theme = 'notebook', dismissAtWidth, onClose }: {
     title: string;
+    titleAction?: ReactNode;
     subtitle?: ReactNode;
     children: ReactNode;
     closeLabel?: string;
@@ -28,7 +29,7 @@ export default function DetailsSheet({ title, subtitle, children, closeLabel = '
     const drag = useRef<{ id: number; x: number; y: number; time: number } | null>(null);
     const titleId = useId();
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const dialog = dialogRef.current!;
         const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         const overflow = document.documentElement.style.overflow;
@@ -58,18 +59,30 @@ export default function DetailsSheet({ title, subtitle, children, closeLabel = '
             const color = theme === 'experience' ? experienceColors[token] : dialog.style.getPropertyValue(`--notebook-${token}`);
             dialog.style.setProperty(`--sheet-${token}`, color);
         }
-        dialog.showModal();
+        // Lock before native dialog focus/layout can change the mobile viewport.
         document.documentElement.style.overflow = 'hidden';
-        if (!query.matches) {
-            animations.current = [
-                sheetRef.current!.animate([{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], { duration: SHEET_MS, easing: SHEET_EASE }),
-                backdropRef.current!.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SHEET_MS }),
-            ];
-        }
+        dialog.showModal();
+        // Let the top layer commit while transparent. Native showModal() focuses
+        // and lays out synchronously, before an imperative animation is attached.
+        // Opacity preserves that focus; visibility:hidden would suppress it.
+        let entranceFrame = requestAnimationFrame(() => {
+            entranceFrame = requestAnimationFrame(() => {
+                if (!mounted.current || closing.current) return;
+                if (!reducedMotion.current) {
+                    animations.current = [
+                        sheetRef.current!.animate([{ transform: 'translateY(100%)' }, { transform: 'translateY(0)' }], { duration: SHEET_MS, easing: SHEET_EASE, fill: 'backwards' }),
+                        backdropRef.current!.animate([{ opacity: 0 }, { opacity: 1 }], { duration: SHEET_MS, fill: 'backwards' }),
+                    ];
+                }
+                dialog.style.opacity = '1';
+            });
+        });
         return () => {
             mounted.current = false;
+            cancelAnimationFrame(entranceFrame);
             animations.current.forEach((animation) => animation.cancel());
             query.removeEventListener('change', update);
+            dialog.style.opacity = '0';
             dialog.close();
             document.documentElement.style.overflow = overflow;
             if (trigger?.isConnected) trigger.focus({ preventScroll: true });
@@ -139,6 +152,7 @@ export default function DetailsSheet({ title, subtitle, children, closeLabel = '
     return createPortal(
         <dialog
             ref={dialogRef}
+            style={{ opacity: 0 }}
             aria-labelledby={titleId}
             onCancel={(event) => {
                 if (event.target !== event.currentTarget) return;
@@ -149,7 +163,12 @@ export default function DetailsSheet({ title, subtitle, children, closeLabel = '
             onPointerDown={(event) => event.stopPropagation()}
             onPointerMove={(event) => event.stopPropagation()}
             onPointerUp={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+                event.stopPropagation();
+                if (event.key === 'Tab') {
+                    dialogRef.current?.querySelector('[data-sheet-handle]')?.removeAttribute('data-initial-focus');
+                }
+            }}
             className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 text-gray-100 outline-none backdrop:bg-transparent"
         >
             <div ref={backdropRef} aria-hidden="true" onClick={close} className="absolute inset-0 bg-[#111827]/70" />
@@ -161,10 +180,13 @@ export default function DetailsSheet({ title, subtitle, children, closeLabel = '
                     onPointerCancel={resetDrag}
                     className="shrink-0 touch-none select-none px-6 pb-4 pt-3"
                 >
-                    <button type="button" data-sheet-handle autoFocus aria-label={closeLabel} onClick={() => { if (!handleMoved.current) close(); }} className="mx-auto -mt-3 mb-1 flex h-11 w-20 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-[var(--sheet-accent)]"><span aria-hidden="true" className="h-1 w-10 rounded-full bg-[var(--sheet-secondary)]" /></button>
+                    <button type="button" data-sheet-handle data-initial-focus="" autoFocus aria-label={closeLabel} onClick={() => { if (!handleMoved.current) close(); }} className="mx-auto -mt-3 mb-1 flex h-11 w-20 cursor-pointer items-center justify-center rounded focus-visible:outline-2 focus-visible:outline-[var(--sheet-accent)] data-[initial-focus]:focus-visible:outline-none"><span aria-hidden="true" className="h-1 w-10 rounded-full bg-[var(--sheet-secondary)]" /></button>
                     <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 pt-1">
-                            <h2 id={titleId} className="text-xl font-bold leading-tight">{title}</h2>
+                            <div className="flex min-w-0 items-center gap-2">
+                                <h2 id={titleId} className="min-w-0 text-xl font-bold leading-tight">{title}</h2>
+                                {titleAction}
+                            </div>
                             {subtitle && <div className="mt-1 text-xs text-[color:var(--sheet-secondary)]">{subtitle}</div>}
                         </div>
                     </div>
