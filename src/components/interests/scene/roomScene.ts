@@ -11,6 +11,8 @@ import {
     glowAt,
     lerpFrame,
     restFrame,
+    reframeViewport,
+    type ViewportBounds,
     type CameraFrame,
     type InterestId,
     type Viewport,
@@ -22,7 +24,7 @@ import { timeOfDay, type WindowState } from '../weather';
 
 export type RoomScene = {
     setWeather: (state: WindowState, visible: boolean) => void;
-    setFocus: (id: InterestId | null) => Promise<void>; // resolves when the camera arrives
+    setFocus: (id: InterestId | null, fromBounds?: ViewportBounds) => Promise<void>; // resolves when the camera arrives
     setHover: (id: InterestId | null) => void;
     setPointer: (nx: number, ny: number) => void; // -1..1 within the stage, for parallax
     setActive: (active: boolean) => void; // false stops the rAF loop
@@ -35,7 +37,7 @@ const CAMERA_DISTANCE = 30;
 const PARALLAX = 0.15;
 const PARALLAX_LERP = 0.06;
 const HOVER_FADE_MS = 200;
-const HOVER_GLOW = { opacity: 0.5, scale: 1.1, ring: 0.85 };
+const HOVER_GLOW = { opacity: 0.5, ring: 0.9 };
 // Smooths the tail between its idle sway and the hover flick
 const TAIL_SETTLE_MS = 80;
 const RECORD_REV_MS = 1800;
@@ -117,19 +119,20 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
         const since = (id: InterestId) => now - activeSince[id];
         const moving = !reducedMotion;
 
-        // Glows: hidden while an object is focused; the hovered one brightens and gets its ring
+        // Keep a visible outline at rest for touch discovery; hover strengthens it.
         for (const id of INTEREST_IDS) {
             const target = hover === id && !focus ? 1 : 0;
             const step = dt / HOVER_FADE_MS;
-            hoverAmount[id] = target > hoverAmount[id] ? Math.min(target, hoverAmount[id] + step) : Math.max(target, hoverAmount[id] - step);
+            hoverAmount[id] = reducedMotion ? target : target > hoverAmount[id] ? Math.min(target, hoverAmount[id] + step) : Math.max(target, hoverAmount[id] - step);
             const h = hoverAmount[id];
-            const base = glowAt(now, id, reducedMotion);
+            const base = glowAt(now, id, reducedMotion, h);
             const glow = model.glows[id];
             const ring = model.rings[id];
             glow.visible = ring.visible = !focus && !opts.hideGlows;
             (glow.material as THREE.MeshBasicMaterial).opacity = base.opacity + (HOVER_GLOW.opacity - base.opacity) * h;
-            glow.scale.setScalar(base.scale + (HOVER_GLOW.scale - base.scale) * h);
-            (ring.material as THREE.MeshBasicMaterial).opacity = HOVER_GLOW.ring * h;
+            glow.scale.setScalar(base.scale);
+            (ring.material as THREE.MeshBasicMaterial).opacity = (0.25 + base.opacity * 1.1) * (1 - h) + HOVER_GLOW.ring * h;
+            ring.scale.setScalar(base.scale);
         }
 
         if (moving && isActive('music')) vinyl.rotation.y -= (dt / RECORD_REV_MS) * 2 * Math.PI;
@@ -218,14 +221,23 @@ export function createRoomScene(canvas: HTMLCanvasElement, opts: { reducedMotion
         setWeather: (state, visible) => {
             weather.set(state, performance.now(), reducedMotion, visible && document.visibilityState !== 'hidden');
         },
-        setFocus: (id) => {
+        setFocus: (id, fromBounds) => {
             tween?.resolve();
             tween = null;
-            const from = lastFrame ?? goal(vp());
+            const previous = lastFrame ?? goal(vp());
+            const from = fromBounds && lastFrame
+                ? reframeViewport(previous, fromBounds, canvas.getBoundingClientRect())
+                : previous;
             focus = id;
-            if (reducedMotion) return Promise.resolve();
+            if (reducedMotion) {
+                render(performance.now());
+                return Promise.resolve();
+            }
             return new Promise<void>((resolve) => {
-                tween = { from, start: performance.now(), resolve };
+                const now = performance.now();
+                tween = { from, start: now, resolve };
+                // Resize and draw before paint, avoiding a stretched stale canvas for one frame.
+                render(now);
             });
         },
         setHover: (id) => {

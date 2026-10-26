@@ -27,7 +27,7 @@ export default function InterestsSection() {
     const [dragY, setDragY] = useState(0);
     const wrapRef = useRef<HTMLDivElement>(null);
     const roomRef = useRef<HTMLDivElement>(null);
-    const tabRefs = useRef<Partial<Record<InterestId, HTMLButtonElement | null>>>({});
+    const transitionRect = useRef<DOMRect | null>(null);
     const returnTo = useRef<HTMLElement | null>(null);
     const drag = useRef<{ y: number; time: number } | null>(null);
 
@@ -49,13 +49,15 @@ export default function InterestsSection() {
 
     const open = (id: InterestId, opener?: HTMLButtonElement) => {
         if (!focus) {
+            if (compact) transitionRect.current = roomRef.current?.getBoundingClientRect() ?? null;
             const active = opener ?? document.activeElement;
-            returnTo.current = active instanceof HTMLElement && active !== document.body ? active : (tabRefs.current[id] ?? null);
+            returnTo.current = active instanceof HTMLElement && active !== document.body ? active : roomRef.current;
         }
         setFocus(id);
     };
 
     const close = () => {
+        if (compact) transitionRect.current = roomRef.current?.getBoundingClientRect() ?? null;
         setFocus(null);
         setPhase('hidden');
         setDragY(0);
@@ -171,13 +173,11 @@ export default function InterestsSection() {
     return (
         <div ref={wrapRef} className="mt-8 font-normal">
             <h1 className="p-2 text-3xl sm:p-4 sm:text-4xl lg:text-5xl">Interests</h1>
-            <p className="mt-2 mb-8 px-2 text-[15px] leading-[22px] text-[#9ca3af] sm:px-4">
-                A small room with a few of my favorite things, explore!
-            </p>
 
             <div className={`relative mx-auto w-full max-w-[1000px] ${compact ? 'aspect-[4/5]' : 'aspect-[25/17]'}`}>
                 <div
                     ref={roomRef}
+                    tabIndex={-1}
                     role={fullScreen ? 'dialog' : undefined}
                     aria-modal={fullScreen ? true : undefined}
                     aria-labelledby={fullScreen ? `${focus}-panel-title` : undefined}
@@ -187,7 +187,7 @@ export default function InterestsSection() {
                             : 'absolute inset-0 overflow-hidden rounded-2xl bg-[#111827]'
                     }
                 >
-                    <RoomStage focus={focus} sheet={compact} onPick={open} reducedMotion={reducedMotion} />
+                    <RoomStage transitionFrom={transitionRect.current} focus={focus} sheet={compact} onPick={open} reducedMotion={reducedMotion} />
 
                     {focus && (
                         <button
@@ -222,42 +222,6 @@ export default function InterestsSection() {
                 </div>
             </div>
 
-            <div
-                className={
-                    compact
-                        ? 'mt-4 grid grid-cols-4'
-                        : 'mt-4 flex items-center justify-center gap-3'
-                }
-            >
-                {INTERESTS.map(({ id, label }, i) => (
-                    <React.Fragment key={id}>
-                        {!compact && i > 0 && (
-                            <span aria-hidden="true" className="text-[#4b5563] select-none">
-                                ·
-                            </span>
-                        )}
-                        <button
-                            ref={(el) => {
-                                tabRefs.current[id] = el;
-                            }}
-                            type="button"
-                            aria-pressed={focus === id}
-                            onClick={(e) => (focus === id ? close() : open(id, e.currentTarget))}
-                            className={`relative h-11 cursor-pointer px-1 text-sm font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7bb3d1] ${
-                                focus === id ? 'text-white' : 'text-[#9ca3af] hover:text-white'
-                            }`}
-                        >
-                            {label}
-                            <span
-                                aria-hidden="true"
-                                className={`absolute inset-x-1 bottom-2 h-0.5 rounded-full bg-[#7bb3d1] transition-opacity duration-200 ${
-                                    focus === id ? 'opacity-100' : 'opacity-0'
-                                }`}
-                            />
-                        </button>
-                    </React.Fragment>
-                ))}
-            </div>
         </div>
     );
 }

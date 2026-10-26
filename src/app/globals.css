@@ -36,3 +36,45 @@ html[data-intro="play"] {
 .timeline-reel::-webkit-scrollbar {
   display: none;
 }
+
+/* Work cards keep their border hover; only the company underline sweeps across. */
+.experience-organization {
+  background-image: linear-gradient(#7bb3d1, #7bb3d1);
+  background-repeat: no-repeat;
+  background-position: left bottom;
+  background-size: 0% 1px;
+  padding-bottom: 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background-size 350ms ease-in-out;
+}
+.experience-card:focus-visible,
+.experience-card:has(> button:focus-visible) {
+  border-color: #7bb3d1;
+  background-color: rgb(123 179 209 / 15%);
+}
+.experience-card:focus-visible .experience-organization,
+.experience-card:has(> button:focus-visible) .experience-organization {
+  background-size: 100% 1px;
+}
+@media (hover: hover) {
+  .experience-card:not([aria-current="true"]):not(:has(> button[aria-expanded="true"])):hover {
+    border-color: #7bb3d1;
+    background-color: rgb(123 179 209 / 15%);
+  }
+  .experience-card:not([aria-current="true"]):not(:has(> button[aria-expanded="true"])):hover .experience-organization { background-size: 100% 1px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .experience-organization { transition: none; }
+}
+
+/* Reserve the selected font's width so switching categories does not shift the tabs. */
+.experience-category-label > span,
+.experience-category-label::after {
+  grid-area: 1 / 1;
+}
+.experience-category-label::after {
+  content: attr(data-label);
+  font-weight: 700;
+  visibility: hidden;
+}

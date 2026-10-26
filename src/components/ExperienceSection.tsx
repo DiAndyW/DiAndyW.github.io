@@ -28,6 +28,9 @@ const ExperienceSection = () => {
     const reelRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef(new Map<number, HTMLDivElement>());
     const glideFrame = useRef(0);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const outgoingRef = useRef<HTMLDivElement>(null);
+    const crossfadeCleanup = useRef<(() => void) | null>(null);
     const paneColumnRef = useRef<HTMLDivElement>(null);
     const linkStubRef = useRef<SVGPathElement>(null);
     const linkTrunkRef = useRef<SVGPathElement>(null);
@@ -47,7 +50,7 @@ const ExperienceSection = () => {
     }[] = [
         {
             id: 1,
-            time: "Oct 2026 - Present",
+            time: "2026 – Present",
             title: "Software Developer",
             organization: "LA Blueprint",
             category: 'swe',
@@ -57,7 +60,7 @@ const ExperienceSection = () => {
         },
         {
             id: 2,
-            time: "Jun 2026 - Sep 2026",
+            time: "2026",
             title: "Software Engineering Intern",
             organization: "Microsoft",
             category: 'swe',
@@ -71,7 +74,7 @@ const ExperienceSection = () => {
         },
         {
             id: 3,
-            time: "May 2026 - Present",
+            time: "2026 – Present",
             title: "DevOps Intern",
             organization: "UCLA Student Media",
             category: 'swe',
@@ -81,7 +84,7 @@ const ExperienceSection = () => {
         },
         {
             id: 4,
-            time: "Nov 2025 - Jun 2026",
+            time: "2025 – 2026",
             title: "Undergraduate Researcher",
             organization: "The B. John Garrick Institute for the Risk Sciences at UCLA",
             category: 'ai',
@@ -95,7 +98,7 @@ const ExperienceSection = () => {
         },
         {
             id: 5,
-            time: "June 2025 - June 2026",
+            time: "2025 – 2026",
             title: "Software Developer",
             organization: "UCLA Department of Civil Engineering",
             category: 'swe',
@@ -109,7 +112,7 @@ const ExperienceSection = () => {
         },
         {
             id: 6,
-            time: "Mar 2025 - Present",
+            time: "2025 – Present",
             title: "Lead Fullstack Developer",
             organization: "Clubhouse Bruins",
             category: 'swe',
@@ -123,7 +126,7 @@ const ExperienceSection = () => {
         },
         {
             id: 7,
-            time: "Mar 2025 - Jun 2025",
+            time: "2025",
             title: "Learning Assistant",
             organization: "UCLA Department of Computer Science",
             category: 'teaching',
@@ -137,7 +140,7 @@ const ExperienceSection = () => {
         },
         {
             id: 8,
-            time: "Jan 2025 - Jan 2026",
+            time: "2025 – 2026",
             title: "Undergraduate Researcher",
             organization: "UCLA Department of Mathematics Lab",
             category: 'ai',
@@ -150,7 +153,7 @@ const ExperienceSection = () => {
         },
         {
             id: 9,
-            time: "Oct 2024 - May 2025",
+            time: "2024 – 2025",
             title: "Fullstack Developer",
             organization: "Creative Labs | Algoace",
             category: 'swe',
@@ -164,7 +167,7 @@ const ExperienceSection = () => {
         },
         {
             id: 10,
-            time: "Sep 2024 - Jan 2025",
+            time: "2024 – 2025",
             title: "Undergraduate Researcher",
             organization: "Elegant Mind Lab UCLA",
             category: 'ai',
@@ -239,6 +242,49 @@ const ExperienceSection = () => {
         trunk.setAttribute('stroke', offscreen ? `url(#${linkFadeId})` : '#7bb3d1');
     };
 
+    const changeCategory = (next: Category) => {
+        if (next === category) return;
+        crossfadeCleanup.current?.();
+        const content = contentRef.current;
+        const outgoing = outgoingRef.current;
+        if (content && outgoing && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            // A noninteractive visual copy lets the old content fade without duplicating React refs.
+            const snapshot = content.cloneNode(true) as HTMLDivElement;
+            snapshot.removeAttribute('data-experience-content');
+            snapshot.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
+            snapshot.inert = true;
+            outgoing.replaceChildren(snapshot);
+            const oldReel = content.querySelector('.timeline-reel');
+            const copiedReel = snapshot.querySelector('.timeline-reel');
+            if (oldReel && copiedReel) copiedReel.scrollTop = oldReel.scrollTop;
+            content.parentElement!.style.minHeight = `${content.offsetHeight}px`;
+        }
+        setCategory(next);
+        setSelectedItem(firstWithDetails(next));
+        setExpandedItem(null);
+    };
+
+    useLayoutEffect(() => {
+        const content = contentRef.current;
+        const outgoing = outgoingRef.current;
+        if (!content || !outgoing?.firstChild) return;
+        const incomingAnimation = content.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: 'ease-in-out' });
+        const outgoingAnimation = outgoing.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: 'ease-in-out' });
+        let finished = false;
+        const cleanup = () => {
+            if (finished) return;
+            finished = true;
+            incomingAnimation.cancel();
+            outgoingAnimation.cancel();
+            outgoing.replaceChildren();
+            content.parentElement!.style.minHeight = '';
+            crossfadeCleanup.current = null;
+        };
+        crossfadeCleanup.current = cleanup;
+        incomingAnimation.finished.then(cleanup, () => {});
+        return cleanup;
+    }, [category]);
+
     // Snap (no glide) to the default role on mount and whenever the tab changes
     useLayoutEffect(() => {
         if (selectedItem !== null) scrollToRole(selectedItem, false);
@@ -265,7 +311,7 @@ const ExperienceSection = () => {
 
     return (
         <div className="flex items-center">
-        <div className="mt-8 font-normal">
+        <div className="mt-8 w-full font-normal">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl p-2 sm:p-4">
                 Experience
             </h1>
@@ -274,24 +320,21 @@ const ExperienceSection = () => {
                     <button
                         key={c.id}
                         aria-pressed={category === c.id}
-                        onClick={() => {
-                            if (c.id === category) return;
-                            setCategory(c.id);
-                            setSelectedItem(firstWithDetails(c.id));
-                            setExpandedItem(null);
-                        }}
+                        onClick={() => changeCategory(c.id)}
                         className={`rounded-full border-2 px-3 py-1 text-sm transition-colors duration-300 cursor-pointer ${
                             category === c.id
                                 ? 'bg-[#5d97b3] border-[#7bb3d1] font-bold'
                                 : 'border-white/30 hover:bg-[#7bb3d1]/20'
                         }`}
                     >
-                        <span className="sm:hidden">{c.short}</span>
-                        <span className="hidden sm:inline">{c.label}</span>
+                        <span className="experience-category-label inline-grid sm:hidden" data-label={c.short}><span>{c.short}</span></span>
+                        <span className="experience-category-label hidden sm:inline-grid" data-label={c.label}><span>{c.label}</span></span>
                     </button>
                 ))}
             </div>
-            <div className="p-2 sm:p-4">
+            <div className="relative">
+            <div ref={outgoingRef} data-experience-outgoing="" aria-hidden="true" inert className="pointer-events-none absolute inset-0" />
+            <div ref={contentRef} data-experience-content="" className="p-2 sm:p-4">
                 <div className="max-w-4xl mx-auto p-3 sm:p-6">
                     {/* Mobile Layout */}
                     <div className="block md:hidden space-y-3">
@@ -299,20 +342,14 @@ const ExperienceSection = () => {
                             const open = expandedItem === item.id;
                             const header = (
                                 <>
-                                    <div className="flex justify-between items-center">
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-base text-white mb-1">{item.title}</h3>
-                                            <p className="text-[#5d97b3] text-sm font-medium">{item.organization}</p>
-                                        </div>
-                                        <div className="text-right ml-3">
-                                            <span className="text-xs text-gray-300 block mb-1">{item.time}</span>
-                                        </div>
-                                    </div>
-                                    {hasDetails(item) ? (
-                                        <p className="text-gray-300 text-sm mb-1 mt-2 leading-relaxed">{item.description}</p>
-                                    ) : (
-                                        <p className="text-gray-500 text-sm italic mt-2">coming soon</p>
-                                    )}
+                                    <span className="block text-xs text-gray-400 mb-1">{item.time}</span>
+                                    <span className="flex items-center gap-3">
+                                        <span className="flex-1">
+                                            <span className="block font-bold text-base">{item.title}</span>
+                                            <span className="experience-organization font-bold text-sm text-[#5d97b3]">{item.organization}</span>
+                                        </span>
+                                    </span>
+                                    {!hasDetails(item) && <span className="block text-xs text-gray-500 italic mt-1">coming soon</span>}
                                 </>
                             );
 
@@ -325,10 +362,11 @@ const ExperienceSection = () => {
                             }
 
                             return (
-                                <div key={item.id} className="border-2 border-white/30 rounded-lg overflow-hidden bg-[#2d4a57]/20 hover:bg-[#7bb3d1]/20 transition-colors duration-300">
+                                <div key={item.id} className="experience-card border-2 border-white/30 rounded-lg overflow-hidden bg-[#2d4a57]/20 transition-colors duration-300 motion-reduce:transition-none">
                                     <button
                                         type="button"
                                         aria-expanded={open}
+                                        aria-controls={`experience-details-${item.id}`}
                                         onClick={() => setExpandedItem(open ? null : item.id)}
                                         className="w-full p-3 text-left cursor-pointer"
                                     >
@@ -337,16 +375,19 @@ const ExperienceSection = () => {
 
                                     {/* Eases to its real height; the points fade in just after */}
                                     <div
-                                        className={`grid transition-[grid-template-rows] duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+                                        id={`experience-details-${item.id}`}
+                                        inert={!open}
+                                        className={`grid transition-[grid-template-rows] motion-reduce:transition-none duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
                                             open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
                                         }`}
                                     >
                                         <div className="overflow-hidden">
                                             <div
-                                                className={`px-3 pb-3 transition-[opacity,transform] duration-300 ${
+                                                className={`px-3 pb-3 transition-[opacity,transform] motion-reduce:transition-none duration-300 ${
                                                     open ? 'opacity-100 translate-y-0 delay-100' : 'opacity-0 -translate-y-1.5'
                                                 }`}
                                             >
+                                                <p className="text-gray-300 text-sm mb-3 leading-relaxed">{item.description}</p>
                                                 <div className="space-y-1 mb-3">
                                                     {item.points.map((point, index) => (
                                                         <div key={index} className="text-xs flex leading-relaxed">
@@ -403,7 +444,7 @@ const ExperienceSection = () => {
                                             <>
                                                 <span className="block text-xs text-gray-400">{item.time}</span>
                                                 <span className="block font-bold">{item.title}</span>
-                                                <span className="block font-bold text-[#5d97b3]">{item.organization}</span>
+                                                <span className="experience-organization font-bold text-[#5d97b3]">{item.organization}</span>
                                                 {!hasDetails(item) && (
                                                     <span className="block text-xs text-gray-500 italic">coming soon</span>
                                                 )}
@@ -434,10 +475,10 @@ const ExperienceSection = () => {
                                                             setSelectedItem(item.id);
                                                             scrollToRole(item.id, true);
                                                         }}
-                                                        className={`w-full text-left border-2 rounded-lg px-3.5 py-3 transition-colors duration-300 cursor-pointer ${
+                                                        className={`experience-card w-full text-left border-2 rounded-lg px-3.5 py-3 transition-colors duration-300 motion-reduce:transition-none cursor-pointer ${
                                                             selected
                                                                 ? 'bg-[#7bb3d1]/20 border-[#7bb3d1]'
-                                                                : 'bg-[#2d4a57]/20 border-white/30 hover:bg-[#7bb3d1]/15 hover:border-[#7bb3d1]'
+                                                                : 'bg-[#2d4a57]/20 border-white/30'
                                                         }`}
                                                     >
                                                         {card}
@@ -510,6 +551,7 @@ const ExperienceSection = () => {
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     </div>

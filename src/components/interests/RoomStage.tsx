@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { INTERESTS } from './interestsData';
-import { HIT_BOXES, restFrame, screenRect, type CameraFrame, type InterestId, type Viewport } from './roomLayout';
+import { HIT_BOXES, restFrame, screenRect, type CameraFrame, type InterestId, type Viewport, type ViewportBounds } from './roomLayout';
 import type { RoomScene } from './scene/roomScene';
 import { focusShowsLabel, visibilityGate } from './stageState';
 import { useRoomWeather } from './useRoomWeather';
@@ -20,13 +20,14 @@ function imageBox(vp: Viewport) {
 }
 
 export default function RoomStage(props: {
+    transitionFrom?: ViewportBounds | null;
     focus: InterestId | null;
     // The open panel is the phone's bottom sheet, so the object frames above it
     sheet: boolean;
     onPick: (id: InterestId, opener: HTMLButtonElement) => void;
     reducedMotion: boolean;
 }) {
-    const { focus, sheet, onPick, reducedMotion } = props;
+    const { focus, sheet, onPick, reducedMotion, transitionFrom } = props;
     const weather = useRoomWeather();
     const weatherRef = useRef(weather);
     weatherRef.current = weather;
@@ -146,17 +147,19 @@ export default function RoomStage(props: {
     }, [weather]);
 
     // Before the focus effect, so a phone open frames for the sheet from the first frame
-    useEffect(() => {
+    useLayoutEffect(() => {
         sceneRef.current?.setSheet(sheet);
     }, [sheet]);
 
-    useEffect(() => {
-        sceneRef.current?.setFocus(focus);
+    useLayoutEffect(() => {
+        sceneRef.current?.setFocus(focus, transitionFrom ?? undefined);
         if (focus) {
             hoverRef.current = null;
             setHover(null);
             sceneRef.current?.setHover(null);
         }
+        // The source bounds belong to the focus change, rather than subsequent resizes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focus]);
 
     const hoverOn = (id: InterestId | null) => {

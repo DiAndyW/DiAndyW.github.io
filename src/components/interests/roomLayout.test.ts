@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     ANCHORS,
+    reframeViewport,
     FOCUS_ZOOM,
     HIT_BOXES,
     INTEREST_IDS,
@@ -124,19 +125,48 @@ test('easeSwoop starts slow, ends at 1, and never goes backwards', () => {
     }
 });
 
-test('glowAt pulses on a 3s cycle with staggered offsets', () => {
+test('glowAt pulses in size at steady brightness on a staggered 4s cycle', () => {
     const lo = glowAt(0, 'music', false);
-    close(lo.opacity, 0.12, 1e-9);
-    close(lo.scale, 0.96, 1e-9);
-    const hi = glowAt(1500, 'music', false);
-    close(hi.opacity, 0.34, 1e-9);
-    close(hi.scale, 1.03, 1e-9);
+    close(lo.opacity, 0.3, 1e-9);
+    close(lo.scale, 0.94, 1e-9);
+    const hi = glowAt(2000, 'music', false);
+    close(hi.opacity, 0.3, 1e-9);
+    close(hi.scale, 1.08, 1e-9);
     const cats = glowAt(0, 'cats', false);
-    const music = glowAt(750, 'music', false);
+    const music = glowAt(1000, 'music', false);
     close(cats.opacity, music.opacity, 1e-9);
     close(cats.scale, music.scale, 1e-9);
 });
 
 test('glowAt holds still under reduced motion', () => {
-    assert.deepEqual(glowAt(1234, 'games', true), { opacity: 0.23, scale: 1 });
+    assert.deepEqual(glowAt(1234, 'games', true), { opacity: 0.3, scale: 1 });
+});
+
+// The fullscreen layer changes bounds; every world point must keep its screen pixels
+// before the camera starts moving. This also checks that the room is never stretched.
+test('viewport reframing preserves screen pixels and proportions when opening and closing', () => {
+    const inline = { left: 12, top: 180, width: 351, height: 439 };
+    const fullscreen = { left: 0, top: 0, width: 375, height: 812 };
+    for (const [from, to] of [[inline, fullscreen], [fullscreen, inline]]) {
+        const frame = restFrame(from);
+        const reframed = reframeViewport(frame, from, to);
+        for (const point of [...SHELL_POINTS, ...Object.values(ANCHORS)]) {
+            const before = projectToScreen(point, frame, from);
+            const after = projectToScreen(point, reframed, to);
+            close(from.left + before.x * from.width, to.left + after.x * to.width, 1e-8);
+            close(from.top + before.y * from.height, to.top + after.y * to.height, 1e-8);
+        }
+    }
+});
+
+test('hover settles the halo above its pulse peak and blends back without a jump', () => {
+    for (const now of [0, 1000, 2000, 3000, 4000]) {
+        const idle = glowAt(now, 'music', false);
+        const hovered = glowAt(now, 'music', false, 1);
+        const halfway = glowAt(now, 'music', false, 0.5);
+        close(hovered.scale, 1.14, 1e-9);
+        close(halfway.scale, (idle.scale + hovered.scale) / 2, 1e-9);
+        close(glowAt(now, 'music', false, 0).scale, idle.scale, 1e-9);
+        assert.deepEqual(glowAt(now, 'music', true, 1), { opacity: 0.3, scale: 1 });
+    }
 });

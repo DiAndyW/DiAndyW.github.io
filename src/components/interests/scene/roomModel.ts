@@ -465,7 +465,7 @@ export function buildRoomModel(reducedMotion = false): RoomModel {
         glow.rotation.x = -Math.PI / 2;
         glow.position.set(...center);
         glow.renderOrder = 1;
-        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(radius * 1.04, radius * 1.04 + 0.05, 72), glowMaterial());
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(radius * 0.98, radius * 1.02, 72), glowMaterial());
         ringMesh.rotation.x = -Math.PI / 2;
         ringMesh.position.set(center[0], center[1] + 0.001, center[2]);
         (ringMesh.material as THREE.MeshBasicMaterial).opacity = 0;

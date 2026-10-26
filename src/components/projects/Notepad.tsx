@@ -701,6 +701,8 @@ export default function Notepad({ projects = PROJECTS }: { projects?: Project[] 
                             width: paperWidth,
                             height: PAPER_HEIGHT,
                             background: k === 0 ? 'var(--notebook-stack)' : 'var(--notebook-deepStack)',
+                            border: '1px solid var(--notebook-border)',
+                            boxShadow: '0 2px 3px rgba(0, 0, 0, 0.12)',
                         }}
                     />
                 ))}

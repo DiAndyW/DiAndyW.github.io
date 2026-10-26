@@ -3,7 +3,7 @@ export const NOTEBOOK_PALETTES = [
     { label: 'Teal / cream / coral', paper: '#20373b', rule: 'rgba(236, 220, 186, .10)', border: 'rgba(236, 220, 186, .28)', back: '#29464a', stack: '#385457', deepStack: '#2b4448', accent: '#e3a18d' },
     { label: 'Indigo / lavender / yellow', paper: '#292e48', rule: 'rgba(192, 183, 225, .12)', border: 'rgba(192, 183, 225, .30)', back: '#343b58', stack: '#454b68', deepStack: '#363d58', accent: '#e7cc85' },
     { label: 'Charcoal / sage / terracotta', paper: '#303633', rule: 'rgba(180, 200, 170, .12)', border: 'rgba(180, 200, 170, .30)', back: '#3b443e', stack: '#4b574f', deepStack: '#3d4841', accent: '#dfa18a' },
-    { label: 'Room colors', paper: '#fff7ea', rule: 'rgba(76, 90, 112, .13)', border: '#ddccb0', back: '#f1e4cc', stack: '#ddccb0', deepStack: '#c98d52', accent: '#a46a3d', ink: '#2c3646', secondary: '#4b5a70', tabs: ['#6fa0e6', '#a9cd62', '#ef7d6a', '#ffd76e', '#f59a45'] },
+    { label: 'Room colors', paper: '#fff7ea', rule: 'rgba(76, 90, 112, .13)', border: '#ddccb0', back: '#f7efdf', stack: '#fff7ea', deepStack: '#fff7ea', accent: '#a46a3d', ink: '#2c3646', secondary: '#4b5a70', tabs: ['#6fa0e6', '#a9cd62', '#ef7d6a', '#ffd76e', '#f59a45'] },
 ] as const;
 
 export function notebookPaletteVariables(index: number): Record<string, string> {
