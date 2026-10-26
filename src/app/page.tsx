@@ -8,6 +8,7 @@ import { FriendsSection } from '../components/FriendsSection';
 import InterestsSection from '../components/InterestsSection';
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
+import { ContactProvider, useContact } from "../components/contact/ContactProvider";
 
 const smoothScrollTo = (targetY: number, duration = 1000) => {
   const startY = window.scrollY;
@@ -38,6 +39,7 @@ interface MobileFABNavProps {
 }
 
 const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
+  const openContact = useContact();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const toggleExpanded = () => {
@@ -121,12 +123,9 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
             <a href='https://www.linkedin.com/in/di-xuan-wang/' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
               <img src='/assets/InBug-White.png' className="w-6" alt="LinkedIn" />
             </a>
-            <a href='/assets/Andy_Wang_Resume.pdf' target="_blank" rel="noopener noreferrer" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-              <img src='/assets/icons-resume.png' className="w-6" alt="Resume" />
-            </a>
-            <a href='mailto:andy.dxwang@gmail.com' className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-              <img src='/assets/mail-svgrepo-com.svg' className="w-6" alt="Email" />
-            </a>
+            <button type="button" onClick={(event) => openContact(event.currentTarget)} aria-label="Get in touch" aria-haspopup="dialog" className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+              <img src='/assets/mail-svgrepo-com.svg' className="w-6" alt="" aria-hidden="true" />
+            </button>
           </div>
         </div>
       </div>
@@ -135,6 +134,10 @@ const MobileFABNav = ({ navItems, activeSection }: MobileFABNavProps) => {
 };
 
 export default function Home() {
+  return <ContactProvider><HomeContent /></ContactProvider>;
+}
+
+function HomeContent() {
   const [activeSection, setActiveSection] = useState<string>('about');
 
   useEffect(() => {

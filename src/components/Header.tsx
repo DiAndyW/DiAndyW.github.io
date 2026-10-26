@@ -1,6 +1,9 @@
 'use client';
 
+import { useContact } from './contact/ContactProvider';
+
 export function Header() {
+    const openContact = useContact();
     const scrollToTop = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -26,12 +29,9 @@ export function Header() {
                             <a href='https://www.linkedin.com/in/di-xuan-wang/' target="_blank" rel="noopener noreferrer" className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors">
                                 <img src='/assets/InBug-White.png' className="w-6 md:w-9" alt="LinkedIn" />
                             </a>
-                            <a href='/assets/Andy_Wang_Resume.pdf' target="_blank" rel="noopener noreferrer" className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors">
-                                <img src='/assets/icons-resume.png' alt='Resume' className="w-6 md:w-9" />
-                            </a>
-                            <a href='mailto:andy.dxwang@gmail.com' className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors">
-                                <img src='/assets/mail-svgrepo-com.svg' alt='Email' className="w-6 md:w-9" />
-                            </a>
+                            <button type="button" onClick={(event) => openContact(event.currentTarget)} aria-label="Get in touch" aria-haspopup="dialog" className="p-1.5 md:p-2 hover:bg-white/10 rounded-lg transition-colors">
+                                <img src='/assets/mail-svgrepo-com.svg' alt='' aria-hidden="true" className="w-6 md:w-9" />
+                            </button>
                         </div>
                     </div>
                 </div>
