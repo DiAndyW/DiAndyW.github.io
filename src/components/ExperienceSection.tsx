@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import TechList from './TechList';
+import DetailsSheet from './DetailsSheet';
 
 type Category = 'swe' | 'ai' | 'teaching';
 
@@ -24,7 +25,7 @@ const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2
 
 const ExperienceSection = () => {
     const [category, setCategory] = useState<Category>('swe');
-    const [expandedItem, setExpandedItem] = useState<number | null>(null);
+    const [sheetItem, setSheetItem] = useState<number | null>(null);
     const reelRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef(new Map<number, HTMLDivElement>());
     const glideFrame = useRef(0);
@@ -261,7 +262,7 @@ const ExperienceSection = () => {
         }
         setCategory(next);
         setSelectedItem(firstWithDetails(next));
-        setExpandedItem(null);
+        setSheetItem(null);
     };
 
     useLayoutEffect(() => {
@@ -309,6 +310,8 @@ const ExperienceSection = () => {
 
     useEffect(() => stopGlide, []);
 
+    const sheetRole = visible.find((item) => item.id === sheetItem);
+
     return (
         <div className="flex items-center">
         <div className="mt-8 w-full font-normal">
@@ -339,7 +342,6 @@ const ExperienceSection = () => {
                     {/* Mobile Layout */}
                     <div className="block md:hidden space-y-3">
                         {visible.map((item) => {
-                            const open = expandedItem === item.id;
                             const header = (
                                 <>
                                     <span className="block text-xs text-gray-400 mb-1">{item.time}</span>
@@ -365,53 +367,13 @@ const ExperienceSection = () => {
                                 <div key={item.id} className="experience-card border-2 border-white/30 rounded-lg overflow-hidden bg-[#2d4a57]/20 transition-colors duration-300 motion-reduce:transition-none">
                                     <button
                                         type="button"
-                                        aria-expanded={open}
-                                        aria-controls={`experience-details-${item.id}`}
-                                        onClick={() => setExpandedItem(open ? null : item.id)}
+                                        aria-haspopup="dialog"
+                                        onClick={() => setSheetItem(item.id)}
                                         className="w-full p-3 text-left cursor-pointer"
                                     >
                                         {header}
                                     </button>
 
-                                    {/* Eases to its real height; the points fade in just after */}
-                                    <div
-                                        id={`experience-details-${item.id}`}
-                                        inert={!open}
-                                        className={`grid transition-[grid-template-rows] motion-reduce:transition-none duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
-                                            open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                                        }`}
-                                    >
-                                        <div className="overflow-hidden">
-                                            <div
-                                                className={`px-3 pb-3 transition-[opacity,transform] motion-reduce:transition-none duration-300 ${
-                                                    open ? 'opacity-100 translate-y-0 delay-100' : 'opacity-0 -translate-y-1.5'
-                                                }`}
-                                            >
-                                                <p className="text-gray-300 text-sm mb-3 leading-relaxed">{item.description}</p>
-                                                <div className="space-y-1 mb-3">
-                                                    {item.points.map((point, index) => (
-                                                        <div key={index} className="text-xs flex leading-relaxed">
-                                                            <span className="pr-2 flex-shrink-0 text-white">•</span>
-                                                            <span className="text-gray-300">{point}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                <TechList technologies={item.technologies} />
-
-                                                {item.link && (
-                                                    <a
-                                                        href={item.link}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-block mt-2 text-xs text-[#5d97b3] hover:text-[#7bb3d1] transition-colors duration-200 underline"
-                                                    >
-                                                        View Project
-                                                    </a>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             );
                         })}
@@ -554,6 +516,28 @@ const ExperienceSection = () => {
             </div>
             </div>
         </div>
+        {sheetRole && (
+            <DetailsSheet
+                title={sheetRole.title}
+                subtitle={<><p className="font-medium text-[#7bb3d1]">{sheetRole.organization}</p><p className="mt-1">{sheetRole.time}</p></>}
+                theme="experience"
+                closeLabel="Close experience details"
+                dismissAtWidth={768}
+                onClose={() => setSheetItem(null)}
+            >
+                <p className="mb-5 text-sm leading-relaxed">{sheetRole.description}</p>
+                <ul className="mb-6 flex list-none flex-col gap-3 p-0">
+                    {sheetRole.points.map((point) => (
+                        <li key={point} className="flex gap-3 text-xs leading-relaxed">
+                            <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-current" />
+                            <span>{point}</span>
+                        </li>
+                    ))}
+                </ul>
+                <TechList technologies={sheetRole.technologies} className="mb-6 text-xs text-gray-400" />
+                {sheetRole.link && <a href={sheetRole.link} target="_blank" rel="noopener noreferrer" className="inline-block py-2 text-xs text-[#7bb3d1] underline underline-offset-4">Open website</a>}
+            </DetailsSheet>
+        )}
     </div>
 );
 }

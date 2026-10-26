@@ -1,6 +1,7 @@
-import { useId, useState, type Ref } from 'react';
+import { useEffect, useId, useState, type Ref } from 'react';
 import Image from 'next/image';
 import ProjectImageViewer from './ProjectImageViewer';
+import ProjectDetailsSheet from './ProjectDetailsSheet';
 import TechList from '../TechList';
 import Sticker from './stickers/Sticker';
 import type { Project } from './projectsData';
@@ -21,6 +22,10 @@ export default function ProjectPage({
     stickerWidth?: number;
 }) {
     const [imageIndex, setImageIndex] = useState<number | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
+    useEffect(() => {
+        if (!compact) setDetailsOpen(false);
+    }, [compact]);
     const viewer = imageIndex !== null && project.images?.length ? (
         <ProjectImageViewer project={project} initialIndex={imageIndex} onClose={() => setImageIndex(null)} />
     ) : null;
@@ -29,16 +34,30 @@ export default function ProjectPage({
 
     const heading = (
         <div className={`flex min-w-0 flex-col gap-0.5 ${compact ? 'flex-1' : ''}`}>
+            <div className="flex min-w-0 items-center gap-2">
             <h3
                 id={titleId}
                 ref={titleRef}
                 tabIndex={-1}
-                className={`m-0 line-clamp-2 font-bold leading-[1.25] tracking-[-.015em] outline-none ${
-                    compact ? 'text-[21px]' : 'text-2xl'
+                className={`m-0 line-clamp-2 font-bold text-[color:var(--notebook-ink)] leading-[1.25] tracking-[-.015em] outline-none ${
+                    compact ? 'text-lg' : 'text-2xl'
                 }`}
             >
-                {project.title}
+                {compact ? project.previewTitle ?? project.title : project.title}
             </h3>
+            {compact && project.link && (
+                <a
+                    href={project.link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${project.link.label}: ${project.title}`}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    className="inline-flex min-h-11 shrink-0 items-center rounded px-1 text-xs font-medium text-[color:var(--notebook-accent)] underline underline-offset-4 transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--notebook-accent)]"
+                >
+                    Open
+                </a>
+            )}
+            </div>
             {project.org && (
                 <p className="m-0 truncate text-[13px] leading-[18px] text-[color:var(--notebook-secondary)]">{project.org}</p>
             )}
@@ -48,36 +67,13 @@ export default function ProjectPage({
     // Everything that can grow sits in the scrolling body; the footer row stays put beneath it.
     const body = (
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-            {compact ? (
-                <div className="flex items-center gap-3.5">
-                    {heading}
-                    <div className="shrink-0 py-1 pr-1.5">
-                        {project.images?.length ? (
-                            <button
-                                type="button"
-                                aria-label={`View ${project.title} screenshots`}
-                                aria-haspopup="dialog"
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onClick={() => setImageIndex(0)}
-                                className="relative block cursor-pointer border-0 bg-transparent p-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#7bb3d1]"
-                            >
-                                <Sticker project={project} index={index} width={92} />
-                                <span aria-hidden="true" className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full border border-[var(--notebook-accent)] bg-[var(--notebook-paper)] text-[color:var(--notebook-accent)]">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-3.5"><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m3 17 6-6 4 4 3-3 5 5" /></svg>
-                                </span>
-                            </button>
-                        ) : <Sticker project={project} index={index} width={92} />}
-                    </div>
-                </div>
-            ) : (
-                heading
-            )}
-            <p className={`m-0 leading-normal ${compact ? 'text-sm' : 'text-[15px]'}`}>
+            {heading}
+            <p className={`m-0 leading-normal text-[15px]`}>
                 {project.description}
             </p>
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 {project.bullets.map((b) => (
-                    <li key={b} className="flex gap-2.5 text-[13.5px] leading-[1.45] text-[color:var(--notebook-ink)]">
+                    <li key={b} className="flex gap-2.5 text-[13.5px] leading-[1.45] text-[color:var(--notebook-secondary)]">
                         <span aria-hidden="true" className="mt-1.5 size-2 shrink-0 rounded-full bg-current" />
                         <span>{b}</span>
                     </li>
@@ -111,11 +107,24 @@ export default function ProjectPage({
         return (
             <article
                 aria-labelledby={titleId}
-                className="flex h-full min-h-0 flex-col gap-3 px-5 pb-3.5 pt-[18px] text-[color:var(--notebook-ink)]"
+                className="flex h-full min-h-0 flex-col gap-2 px-5 pb-3.5 pt-[18px] text-[color:var(--notebook-secondary)]"
             >
-                {body}
-                {footer}
-                {viewer}
+                <div className="flex shrink-0 items-center gap-3.5">
+                    {heading}
+                    <div className="shrink-0 py-1 pr-1"><Sticker project={project} index={index} width={80} /></div>
+                </div>
+                <p className="m-0 text-xs leading-relaxed">{project.summary ?? project.description}</p>
+                <button
+                    type="button"
+                    aria-label={`Read more about ${project.title}`}
+                    aria-haspopup="dialog"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() => setDetailsOpen(true)}
+                    className="min-h-11 shrink-0 cursor-pointer self-start border-0 bg-transparent py-2 text-xs font-medium text-[color:var(--notebook-accent)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#7bb3d1]"
+                >
+                    Read more
+                </button>
+                {detailsOpen && <ProjectDetailsSheet project={project} onClose={() => setDetailsOpen(false)} />}
             </article>
         );
     }
@@ -123,7 +132,7 @@ export default function ProjectPage({
     return (
         <article
             aria-labelledby={titleId}
-            className="flex h-full min-h-0 pb-4 pt-5 text-[color:var(--notebook-ink)]"
+            className="flex h-full min-h-0 pb-4 pt-5 text-[color:var(--notebook-secondary)]"
             style={{ paddingInline: PAGE_PAD_X, gap: ART_GAP }}
         >
             {/* sticker column: a share of the page, sticker sized to fit it (at most 240px wide), level with the title */}

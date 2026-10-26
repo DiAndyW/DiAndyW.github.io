@@ -115,7 +115,14 @@ function renderPageTexture(root: HTMLElement): HTMLCanvasElement {
             const text = node.textContent;
             let line = '', x = 0, y = 0, previousY = -Infinity;
             const draw = () => {
-                if (line) context.fillText(line, x - bounds.x, y - bounds.y);
+                if (!line) return;
+                context.fillText(line, x - bounds.x, y - bounds.y);
+                if (style.textDecorationLine.includes('underline')) {
+                    const fontSize = parseFloat(style.fontSize);
+                    const offset = parseFloat(style.textUnderlineOffset) || fontSize * 0.1;
+                    const thickness = parseFloat(style.textDecorationThickness) || Math.max(1, fontSize / 16);
+                    context.fillRect(x - bounds.x, y - bounds.y + offset, context.measureText(line).width, thickness);
+                }
             };
             for (let i = 0; i < text.length; i++) {
                 range.setStart(node, i); range.setEnd(node, i + 1);

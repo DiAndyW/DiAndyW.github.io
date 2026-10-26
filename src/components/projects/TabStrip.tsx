@@ -43,8 +43,8 @@ export default function TabStrip({ projects, page, onPick }: {
                             parent.scrollTop = tab.offsetTop + tab.offsetHeight - parent.clientHeight;
                     }}
                     onClick={() => onPick(index)}
-                    className={`relative flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-r-lg border-0 py-2 pl-2 pr-1 text-xs leading-none text-[#1f2937] [writing-mode:vertical-rl] hover:brightness-90 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#1f2937] ${index === page ? 'font-bold' : 'font-semibold'}`}
-                    style={{ height: 108, background: `var(--notebook-tab-${index % 5})` }}
+                    className={`relative flex min-h-11 flex-1 shrink-0 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-r-lg border-0 py-1 pl-2 pr-1 text-xs leading-none text-[#1f2937] [writing-mode:vertical-rl] hover:brightness-90 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#1f2937] ${index === page ? 'font-bold' : 'font-normal'}`}
+                    style={{ width: index === page ? '100%' : 'calc(100% - 6px)', background: `var(--notebook-tab-${index % 5})` }}
                 >
                     <ProjectTabLabel project={project} compact />
                 </button>

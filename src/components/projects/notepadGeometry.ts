@@ -15,8 +15,8 @@ export const RING_INSET = 40;
 // The whole notepad; the placeholder before the first measurement matches it.
 export const FRAME_HEIGHT = 604;
 
-// Single-column frame, after the BMobile artboard. The paper's height is CSS, so it can follow the viewport.
-export const S_PAPER_HEIGHT = 'max(420px, min(620px, calc(100svh - 180px)))';
+// The compact paper is a fixed preview; full write-ups open in a separate sheet.
+export const S_PAPER_HEIGHT = '340px';
 export const S_PAPER_TOP = 14; // the rings stand this far above the paper
 export const S_PAPER_PAD_TOP = 22;
 export const S_STRIP_TUCK = 8; // the tab strip's top sits this far under the paper

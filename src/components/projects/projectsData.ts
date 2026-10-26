@@ -4,10 +4,12 @@ export type StickerId = 'mosaic' | 'true-talent' | 'morii' | 'btd' | 'temple';
 export type Project = {
     slug: string;
     title: string;
+    previewTitle?: string;
     // Compact name for the tabs, when the title is too long to fit.
     shortTitle?: string;
     org?: string;
     description: string;
+    summary?: string;
     bullets: [string, string];
     tech: string[];
     // Shown when there is a public link; otherwise `status` takes its place.
@@ -34,6 +36,7 @@ export const PROJECTS: Project[] = [
     {
         slug: 'mosaic',
         title: 'Mosaic',
+        summary: 'An iOS app that turns weekly photo challenges with friends into a shared mosaic.',
         description:
             'Designed and built a native SwiftUI iOS app, where friend groups take on weekly photo challenges that contribute to a shared photo mosaic!',
         bullets: [
@@ -50,6 +53,8 @@ export const PROJECTS: Project[] = [
     {
         slug: 'true-talent',
         title: 'True Talent',
+        shortTitle: 'Talent',
+        summary: 'An AI-assisted coding interview platform that helps interviewers spot cheating.',
         org: 'LA Hacks 2025',
         description:
             'Created a code-interview website that helps detect cheating using AI, allowing companies to find the truly talented.',
@@ -66,6 +71,7 @@ export const PROJECTS: Project[] = [
     {
         slug: 'morii',
         title: 'Morii',
+        summary: 'A social app for sharing moods and expressing yourself authentically.',
         description:
             'Collaborated on a social media app designed to promote emotional awareness and authentic self-expression.',
         bullets: [
@@ -84,7 +90,9 @@ export const PROJECTS: Project[] = [
     {
         slug: 'btd-training-camp',
         title: 'Bloon Tower Defense Training Camp',
+        previewTitle: 'Bloon TD',
         shortTitle: 'Bloon TD',
+        summary: 'A 3D first-person aim trainer inspired by Bloons Tower Defense and Aim Labs.',
         description:
             'Created a 3D first-person shooter aim trainer inspired by Balloon Towers Defense and Aim Labs.',
         bullets: [
@@ -103,6 +111,8 @@ export const PROJECTS: Project[] = [
     {
         slug: 'temple-of-doom',
         title: 'Temple of Doom',
+        shortTitle: 'Temple',
+        summary: 'A C++ dungeon game with real-time maps and enemies that find their way to you.',
         description:
             'Designed and developed a 2D dungeon-style game using C++ inspired by classic arcade games.',
         bullets: [
