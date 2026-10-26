@@ -172,7 +172,9 @@ export default function DetailsSheet({ title, titleAction, subtitle, children, c
             className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 text-gray-100 outline-none backdrop:bg-transparent"
         >
             <div ref={backdropRef} aria-hidden="true" onClick={close} className="absolute inset-0 bg-[#111827]/70" />
-            <section ref={sheetRef} className="absolute inset-x-0 bottom-0 mx-auto flex min-h-[60dvh] max-h-[80dvh] max-w-xl flex-col overflow-hidden rounded-t-2xl border border-[var(--sheet-border)] bg-[var(--sheet-paper)] text-[color:var(--sheet-ink)] shadow-xl">
+            {/* A stationary opaque edge lets Safari sample paper behind its toolbar during the slide. */}
+            <div aria-hidden="true" data-sheet-edge className="pointer-events-none fixed inset-x-0 bottom-0 mx-auto h-[max(16px,env(safe-area-inset-bottom))] max-w-xl bg-[var(--sheet-paper)]" />
+            <section ref={sheetRef} className="absolute inset-x-0 bottom-0 mx-auto flex min-h-[60dvh] max-h-[80dvh] max-w-xl flex-col overflow-hidden rounded-t-2xl border-x border-t border-[var(--sheet-border)] bg-[var(--sheet-paper)] text-[color:var(--sheet-ink)] shadow-xl">
                 <header
                     onPointerDown={onHeaderDown}
                     onPointerMove={onHeaderMove}
