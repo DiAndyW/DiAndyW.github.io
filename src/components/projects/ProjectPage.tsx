@@ -150,7 +150,7 @@ export default function ProjectPage({
                         onClick={() => setImageIndex(imageIndex)}
                         className="relative w-full max-w-[222px] shrink-0 cursor-pointer border-0 bg-[#ded9cf] p-1.5 shadow-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#7bb3d1]"
                     >
-                        <span aria-hidden="true" className="absolute -top-2 left-1/2 z-10 h-5 w-12 -translate-x-1/2 rotate-[7deg] bg-[#d9cdb0]/75" />
+                        <span aria-hidden="true" className="absolute -top-2 left-1/2 z-10 h-5 w-12 -translate-x-1/2 bg-[#d9cdb0]/75" />
                         <Image unoptimized src={image.src} alt={image.alt} width={image.width} height={image.height} sizes="222px" className="mx-auto block h-auto max-h-[270px] w-auto max-w-full" />
                     </button>
                 ))}
