@@ -1,11 +1,43 @@
+import { createHash } from 'node:crypto';
+import { isIP } from 'node:net';
+import { Redis } from '@upstash/redis';
+
 export interface ContactConfig {
     apiKey?: string;
     from?: string;
     to?: string;
+    // Enable only behind a proxy that overwrites x-forwarded-for (Vercel).
+    trustProxy?: boolean;
+    requireSharedLimiter?: boolean;
+    redisUrl?: string;
+    redisToken?: string;
 }
 
 const MAX_BODY_BYTES = 16_384;
-const WINDOW_MS = 15 * 60_000;
+// One atomic reservation across all instances; denied attempts do not extend windows.
+const RESERVE = `
+local retry = 0
+for i = 1, #KEYS do
+    if tonumber(redis.call('GET', KEYS[i]) or '0') >= tonumber(ARGV[i * 2 - 1]) then
+        retry = math.max(retry, redis.call('TTL', KEYS[i]))
+        if retry < 1 then retry = 1 end
+    end
+end
+if retry > 0 then return {0, retry} end
+for i = 1, #KEYS do
+    local count = redis.call('INCR', KEYS[i])
+    if count == 1 then redis.call('EXPIRE', KEYS[i], ARGV[i * 2]) end
+end
+return {1, 0}
+`;
+
+function clientKey(request: Request, trustProxy?: boolean) {
+    const forwarded = trustProxy ? request.headers.get('x-forwarded-for')?.trim() : undefined;
+    // Reject lists/malformed addresses rather than trusting a visitor-controlled prefix.
+    if (!forwarded || !isIP(forwarded)) return 'unknown';
+    const normalized = isIP(forwarded) === 6 ? new URL(`http://[${forwarded}]/`).hostname : forwarded;
+    return createHash('sha256').update(normalized).digest('hex');
+}
 const EMAIL = /^[^\s@\x00-\x1f\x7f]+@[^\s@\x00-\x1f\x7f]+\.[^\s@\x00-\x1f\x7f]+$/;
 
 function reply(status: number, error?: string, headers: Record<string, string> = {}) {
@@ -17,8 +49,9 @@ function reply(status: number, error?: string, headers: Record<string, string> =
 export function createContactHandler(config: ContactConfig, dependencies: { fetch?: typeof fetch; now?: () => number } = {}) {
     const send = dependencies.fetch ?? fetch;
     const now = dependencies.now ?? Date.now;
-    // Best-effort per-instance throttle. Serverless instances do not share this map.
+    // Development-only fallback; production requires the shared store.
     const attempts = new Map<string, { count: number; expires: number }>();
+    let redis: Redis | undefined;
 
     return async (request: Request): Promise<Response> => {
         if (request.headers.get('origin') !== new URL(request.url).origin) {
@@ -73,16 +106,55 @@ export function createContactHandler(config: ContactConfig, dependencies: { fetc
             return reply(503, 'Messages are temporarily unavailable. Please reach out on LinkedIn.');
         }
 
-        const time = now();
-        for (const [key, entry] of attempts) if (entry.expires <= time) attempts.delete(key);
-        const client = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-        const entry = attempts.get(client);
-        if ((entry && entry.count >= 3) || (!entry && attempts.size >= 1000)) {
-            return reply(429, 'Too many messages. Please try again later.', {
-                'Retry-After': String(Math.ceil(((entry?.expires ?? time + WINDOW_MS) - time) / 1000)),
-            });
+        const unavailable = () => reply(503, 'Messages are temporarily unavailable. Please reach out on LinkedIn.');
+        const client = clientKey(request, config.trustProxy);
+        // Hash-tag keeps all keys in the same Redis cluster slot. No email/IP is stored.
+        const quotas = [
+            { key: `{portfolio-contact}:client:${client}`, limit: 3, seconds: 900 },
+            { key: '{portfolio-contact}:quarter-hour', limit: 20, seconds: 900 },
+            { key: '{portfolio-contact}:day', limit: 100, seconds: 86400 },
+        ];
+        let retryAfter = 0;
+        if (config.redisUrl && config.redisToken) {
+            try {
+                if (new URL(config.redisUrl).protocol !== 'https:') return unavailable();
+                redis ??= new Redis({
+                    url: config.redisUrl,
+                    token: config.redisToken,
+                    // A lost response may still mean the reservation succeeded.
+                    retry: { retries: 0 },
+                    signal: () => AbortSignal.timeout(5_000),
+                    cache: 'no-store',
+                    enableAutoPipelining: false,
+                    enableTelemetry: false,
+                });
+                const result: unknown = await redis.eval(RESERVE, quotas.map(q => q.key),
+                    quotas.flatMap(q => [q.limit, q.seconds]));
+                if (!Array.isArray(result) || result.length !== 2 ||
+                    ![0, 1].includes(result[0]) || !Number.isInteger(result[1]) ||
+                    (result[0] === 1 ? result[1] !== 0 : result[1] < 1 || result[1] > 86400)) return unavailable();
+                if (result[0] === 0) retryAfter = result[1];
+            } catch {
+                return unavailable();
+            }
+        } else {
+            if (config.requireSharedLimiter || config.redisUrl || config.redisToken) return unavailable();
+            const time = now();
+            for (const [key, entry] of attempts) if (entry.expires <= time) attempts.delete(key);
+            for (const quota of quotas) {
+                const entry = attempts.get(quota.key);
+                if (entry && entry.count >= quota.limit) {
+                    retryAfter = Math.max(retryAfter, Math.ceil((entry.expires - time) / 1000));
+                }
+            }
+            if (!retryAfter) {
+                for (const quota of quotas) {
+                    const entry = attempts.get(quota.key);
+                    attempts.set(quota.key, { count: (entry?.count ?? 0) + 1, expires: entry?.expires ?? time + quota.seconds * 1000 });
+                }
+            }
         }
-        attempts.set(client, { count: (entry?.count ?? 0) + 1, expires: entry?.expires ?? time + WINDOW_MS });
+        if (retryAfter) return reply(429, 'Too many messages. Please try again later.', { 'Retry-After': String(retryAfter) });
 
         try {
             const response = await send('https://api.resend.com/emails', {
