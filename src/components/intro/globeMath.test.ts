@@ -57,7 +57,7 @@ test('cameraDistance frames the globe at the given fraction of the shorter side'
 
 test('timeline uses the tuned spin, pause, zoom and cloud reveal', () => {
     assert.deepEqual(SPIN, { ms: 1500, turns: 0.55, pauseMs: 500 });
-    assert.deepEqual(ZOOM, { ms: 1000, cloudsFrom: 0.5, coverAt: 0.9, revealMs: 400 });
+    assert.deepEqual(ZOOM, { ms: 1000, cloudsFrom: 0.5, coverAt: 0.9, revealMs: 850 });
     assert.deepEqual(timeline(SPIN, ZOOM), {
         spin: 1500,
         tiltFrom: 600,
@@ -65,7 +65,7 @@ test('timeline uses the tuned spin, pause, zoom and cloud reveal', () => {
         zoom: 3000,
         cloudsFrom: 2500,
         cover: 2900,
-        end: 3350,
+        end: 3800,
     });
 });
 

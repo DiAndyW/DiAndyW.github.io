@@ -7,8 +7,8 @@ export const LA = { lat: 34.05, lon: -118.24 };
 // Tuned in the preview: 1.5s to cover 0.55 of a turn, then rest on LA for 0.5s before zooming in.
 export const SPIN = { ms: 1500, turns: 0.55, pauseMs: 500 };
 
-// A 1s dive toward LA. Clouds start halfway down, cover the screen at 90%, then part over 0.4s.
-export const ZOOM = { ms: 1000, cloudsFrom: 0.5, coverAt: 0.9, revealMs: 400 };
+// A 1s dive toward LA. Clouds start halfway down, cover the screen at 90%, then break up within 0.85s.
+export const ZOOM = { ms: 1000, cloudsFrom: 0.5, coverAt: 0.9, revealMs: 850 };
 
 const DEG = Math.PI / 180;
 
@@ -43,7 +43,7 @@ export function cameraDistance(fovDeg: number, aspect: number, fraction: number)
     return 1 / (fraction * Math.tan((fovDeg / 2) * DEG) * Math.min(1, aspect));
 }
 
-// After the spin: rest on LA, dive in, fly into the clouds, then part them to reveal the site.
+// After the spin: rest on LA, dive in, drop into the clouds, then break out of them onto the site.
 export function timeline(spin: typeof SPIN, zoom: typeof ZOOM) {
     const hold = spin.ms + spin.pauseMs;
     const cover = hold + zoom.coverAt * zoom.ms;

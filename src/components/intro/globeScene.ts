@@ -83,7 +83,7 @@ export type GlobeIntro = {
     dispose: () => void;
 };
 
-// Plays spin → stop on LA → dive into the clouds, then opens a hole in them onto the page under `overlay`.
+// Plays spin → stop on LA → dive into the clouds, then breaks out of them onto the page under `overlay`.
 // Throws if WebGL is unavailable.
 export function createGlobeIntro(canvas: HTMLCanvasElement, cloudCanvas: HTMLCanvasElement, overlay: HTMLElement): GlobeIntro {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -182,7 +182,7 @@ export function createGlobeIntro(canvas: HTMLCanvasElement, cloudCanvas: HTMLCan
         ripple.scale.setScalar(1 + 2.6 * easeOut(ripplePhase));
         rippleMat.opacity = ripplePhase > 0 && ripplePhase < 1 ? 0.85 * (1 - ripplePhase) * pinOut : 0;
 
-        // Once the clouds cover the screen, drop the globe and the backdrop so the hole shows the page.
+        // Once the clouds cover the screen, drop the globe and the backdrop so the gaps show the page.
         const covered = clouds.draw(t);
         canvas.style.opacity = covered ? '0' : String(clamp(t / 300));
         overlay.style.backgroundColor = covered ? 'transparent' : '';
@@ -193,7 +193,8 @@ export function createGlobeIntro(canvas: HTMLCanvasElement, cloudCanvas: HTMLCan
     const tick = (now: number) => {
         const t = skipped ? T.end : now - startTime;
         render(t);
-        if (t >= T.end) {
+        // The last scraps of cloud leave the screen before the break-through's time is up; don't hold the overlay.
+        if (t >= T.end || clouds.cleared()) {
             resolveDone();
             return;
         }

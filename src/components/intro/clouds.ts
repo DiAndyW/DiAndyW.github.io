@@ -1,20 +1,23 @@
 // Flat clouds for the intro's dive, drawn on a 2D canvas over the globe in the same style as the globe:
-// solid fills, hard edges, and one flat darker tone on the underside. Cloud shapes are plain data so they
-// can be unit tested; createCloudLayer turns them into paths in the browser.
+// solid fills, hard edges, and one flat darker tone on the side away from the sun. The camera looks straight
+// down, so the clouds are decks seen from above: ragged sheets stacked in depth, each one thicker than the
+// last. The layout is plain data so it can be unit tested; createCloudLayer turns it into paths in the browser.
 
-// Each shape is about one unit wide and sits on a flat base at y = FLAT_BASE (y points down).
-// Parts are circles [x, y, r] or pills { pill: [x, y, length, height] } where (x, y) is the left end's center.
-type Part = [number, number, number] | { pill: [number, number, number, number] };
-export type CloudType = 'cumulus' | 'stratus' | 'tower' | 'puff' | 'streak';
-export type CloudShape = { type: CloudType; parts: Part[]; hw: number }; // hw: rough half-width
-
-const FLAT_BASE = 0.12;
-const TOP_SHIFT = 0.045; // the white top sits this far above the shade, leaving a flat strip underneath
-
-// Tuned in the preview: twotone look, 60 clouds at 1.5 per unit of amount, size 1.3.
-export const CLOUDS = { seed: 11, amount: 90, baseSize: 0.65, size: 0.65 * 1.3, haze: 0.45 };
+// Tuned in the preview: 5 decks at 1.2x cover, haze 0.7.
+export const CLOUDS = { seed: 23, layers: 5, cover: 1.2, haze: 0.7 };
 const WHITE = '#ffffff';
 const SHADE = '#d2e0f0';
+// Far decks are tinted toward the sky and sit behind haze.
+const WHITE_FAR = '#cfe0f6';
+const SHADE_FAR = '#a9c4e8';
+const HAZE = '#eef4fc';
+const SHADOW = '#1d3f7a';
+// Shade and shadows fall down-right, away from the globe's sun.
+const LIGHT_X = 0.8;
+const LIGHT_Y = 0.6;
+// Starting depths of the nearest and farthest deck. Depth 1 is where one unit spans the screen's larger half.
+const NEAR_D = 2;
+const FAR_D = 5.8;
 
 export function seeded(seed: number): () => number {
     return () => {
@@ -25,129 +28,128 @@ export function seeded(seed: number): () => number {
     };
 }
 
-const CLOUD_TYPES: Record<CloudType, (rand: () => number) => Omit<CloudShape, 'type'>> = {
-    // Puffy cumulus: a row of small puffs with 2-3 big humps on top.
-    cumulus(rand) {
-        const parts: Part[] = [];
-        const n = 5 + Math.floor(rand() * 3);
-        for (let i = 0; i < n; i++) parts.push([-0.4 + (0.8 * i) / (n - 1) + (rand() - 0.5) * 0.06, 0.04 + rand() * 0.03, 0.09 + rand() * 0.05]);
-        const humps = 2 + Math.floor(rand() * 2);
-        for (let i = 0; i < humps; i++) {
-            const r = 0.15 + rand() * 0.1;
-            parts.push([-0.25 + (0.5 * i) / (humps - 1) + (rand() - 0.5) * 0.12, 0.06 - r * 0.75 - rand() * 0.05, r]);
-        }
-        for (let i = 0; i < 3; i++) parts.push([(rand() - 0.5) * 0.6, -0.04 - rand() * 0.06, 0.1 + rand() * 0.06]);
-        return { parts, hw: 0.55 };
-    },
-    // Long, low stratus: many small puffs strung out with a few gentle bumps.
-    stratus(rand) {
-        const parts: Part[] = [];
-        const n = 10 + Math.floor(rand() * 4);
-        for (let i = 0; i < n; i++) parts.push([-0.75 + (1.5 * i) / (n - 1) + (rand() - 0.5) * 0.05, 0.06 + rand() * 0.02, 0.07 + rand() * 0.04]);
-        for (let i = 0, k = 2 + Math.floor(rand() * 3); i < k; i++) {
-            const r = 0.1 + rand() * 0.07;
-            parts.push([(rand() - 0.5) * 1.1, 0.07 - r * 0.6, r]);
-        }
-        return { parts, hw: 0.85 };
-    },
-    // Tall tower: puffs stacked into a column that narrows toward the top.
-    tower(rand) {
-        const parts: Part[] = [];
-        for (let i = 0; i < 4; i++) parts.push([-0.3 + 0.2 * i + (rand() - 0.5) * 0.04, 0.05, 0.1 + rand() * 0.03]);
-        const levels = 3 + Math.floor(rand() * 2);
-        let drift = 0;
-        for (let l = 0; l < levels; l++) {
-            drift += (rand() - 0.5) * 0.08;
-            const r = 0.19 - l * 0.025;
-            const y = -0.04 - l * 0.15;
-            parts.push([drift - 0.1, y, r], [drift + 0.1, y - rand() * 0.04, r * (0.85 + rand() * 0.2)]);
-        }
-        parts.push([drift, -0.04 - levels * 0.15 + 0.04, 0.12]);
-        return { parts, hw: 0.4 };
-    },
-    // Small round puff: a tight cluster of big circles.
-    puff(rand) {
-        const parts: Part[] = [[-0.14, 0.03, 0.12], [0.14, 0.03, 0.12], [0, 0.04, 0.12]];
-        for (let i = 0, k = 3 + Math.floor(rand() * 2); i < k; i++) parts.push([(rand() - 0.5) * 0.3, -0.08 - rand() * 0.1, 0.15 + rand() * 0.07]);
-        return { parts, hw: 0.35 };
-    },
-    // Stacked streaks: 2-3 rounded pills of different lengths, offset like wind lines.
-    streak(rand) {
-        const parts: Part[] = [];
-        const k = 2 + Math.floor(rand() * 2);
-        for (let i = 0; i < k; i++) {
-            const h = 0.17 + rand() * 0.04;
-            const len = 0.25 + rand() * 0.35;
-            parts.push({ pill: [(rand() - 0.5) * 0.3 - len / 2, FLAT_BASE - h / 2 - i * 0.16, len, h] });
-        }
-        return { parts, hw: 0.55 };
-    },
-};
+const clamp = (v: number) => Math.min(1, Math.max(0, v));
 
-// How often each type shows up in the tunnel. Puffy clouds stay the most common.
-export const TYPE_WEIGHTS: [CloudType, number][] = [
-    ['cumulus', 0.34],
-    ['stratus', 0.2],
-    ['tower', 0.14],
-    ['puff', 0.16],
-    ['streak', 0.16],
-];
+// Smooth value noise on a repeating grid.
+function valueNoise(rand: () => number): (x: number, y: number) => number {
+    const P = 64;
+    const grid = Float32Array.from({ length: P * P }, () => rand());
+    const at = (x: number, y: number) => grid[(((y % P) + P) % P) * P + (((x % P) + P) % P)];
+    return (x, y) => {
+        const x0 = Math.floor(x);
+        const y0 = Math.floor(y);
+        const fx = x - x0;
+        const fy = y - y0;
+        const sx = fx * fx * (3 - 2 * fx);
+        const sy = fy * fy * (3 - 2 * fy);
+        const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * sx;
+        const b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * sx;
+        return a + (b - a) * sy;
+    };
+}
 
-// a: direction from the screen center; r: distance out at depth 1; z: starting depth; s: size multiplier.
-type TunnelCloud = { a: number; r: number; z: number; s: number; flip: boolean; shape: CloudShape };
-type RingCloud = { a: number; k: number; flip: boolean; shape: CloudShape };
-export type CloudField = { tunnel: TunnelCloud[]; hero: CloudShape; ring: RingCloud[] };
+export type Circle = [x: number, y: number, r: number];
+// d: starting depth; s: grid spacing, which sets the width of the shade; bumps: lumps drawn on top of the base.
+export type Deck = { d: number; s: number; base: Circle[]; bumps: Circle[] };
+type ExitCell = { u: number; v: number; val: number; j: number };
+export type ExitSheet = { cells: ExitCell[]; grain: number; lo: number; hi: number };
+export type CloudField = { decks: Deck[]; exit: ExitSheet };
+
+// One deck: a jittered grid of circles kept where noise is high, so the cover forms ragged banks with gaps.
+// The grid scales with depth, so every deck fills the screen when it first shows and lower decks are made of
+// bigger masses.
+function buildDeck(i: number, n: number, rand: () => number, noise: (x: number, y: number) => number): Deck {
+    const f = n === 1 ? 1 : i / (n - 1);
+    const last = i === n - 1;
+    const d = NEAR_D + (FAR_D - NEAR_D) * f;
+    const grain = 0.06 + 0.02 * f;
+    const cover = Math.min(0.97, Math.max(0.05, (0.22 + 0.5 * Math.pow(f, 1.4)) * CLOUDS.cover));
+    const ox = rand() * 40;
+    const oy = rand() * 40;
+    const sig = (last ? 1.3 : 0.5) / d;
+    const cands: { u: number; v: number; val: number; j: number; b: number }[] = [];
+    for (let gy = -1.5; gy <= 1.5; gy += grain) {
+        for (let gx = -1.5; gx <= 1.5; gx += grain) {
+            const u = gx + (rand() - 0.5) * grain * 0.7;
+            const v = gy + (rand() - 0.5) * grain * 0.7;
+            let val = 0.65 * noise(u / 0.36 + ox, v / 0.36 + oy) + 0.35 * noise(u / 0.15 + oy, v / 0.15 + ox);
+            // Upper decks leave a gap dead ahead to dive through; the last one is solid there.
+            val += (last ? 1.2 : -1.2) * Math.exp(-(u * u + v * v) / (sig * sig));
+            cands.push({ u, v, val, j: rand(), b: rand() });
+        }
+    }
+    const sorted = cands.map((c) => c.val).sort((a, b) => a - b);
+    const thr = sorted[Math.min(sorted.length - 1, Math.floor((1 - cover) * sorted.length))];
+    const base: Circle[] = [];
+    const bumps: Circle[] = [];
+    for (const c of cands) {
+        if (c.val <= thr) continue;
+        // Circles shrink toward the edge of a bank, which leaves the edges lacy.
+        const e = clamp((c.val - thr) / 0.22);
+        const r = grain * (0.6 + 0.8 * e) * (0.9 + 0.2 * c.j) * d;
+        base.push([c.u * d, c.v * d, r]);
+        if (e > 0.45 && c.b < 0.42) bumps.push([c.u * d, c.v * d, r * 0.6]);
+    }
+    return { d, s: grain * d, base, bumps };
+}
 
 // The same seeded layout every visit, so the intro always looks the way it was tuned.
 export function cloudField(seed = CLOUDS.seed): CloudField {
     const rand = seeded(seed);
-    const byType = Object.fromEntries(
-        TYPE_WEIGHTS.map(([type]) => [type, Array.from({ length: 3 }, () => ({ type, ...CLOUD_TYPES[type](rand) }))]),
-    ) as Record<CloudType, CloudShape[]>;
-    const pickCumulus = () => byType.cumulus[Math.floor(rand() * 3)];
-    const pick = () => {
-        let roll = rand();
-        const [type] = TYPE_WEIGHTS.find(([, w]) => (roll -= w) < 0) ?? TYPE_WEIGHTS[0];
-        return byType[type][Math.floor(rand() * 3)];
-    };
+    const noise = valueNoise(rand);
+    const decks = Array.from({ length: CLOUDS.layers }, (_, i) => buildDeck(i, CLOUDS.layers, rand, noise));
 
-    const tunnel = Array.from({ length: CLOUDS.amount }, () => {
-        const s = 0.6 + rand() * 1.1;
-        const shape = pick();
-        // Clouds stay solid, so they're placed out to the side to stream past the camera rather than through it.
-        const r = 0.15 + shape.hw * CLOUDS.baseSize * s + rand() * 0.8;
-        return { a: rand() * Math.PI * 2, r, z: 1 + rand() * 4.6, s, flip: rand() < 0.5, shape };
-    });
-    const hero = pickCumulus();
-    const ring = Array.from({ length: 14 }, (_, i) => ({
-        a: (i / 14) * Math.PI * 2 + rand() * 0.2,
-        k: 0.9 + rand() * 0.3,
-        flip: rand() < 0.5,
-        shape: pickCumulus(),
-    }));
-    return { tunnel, hero, ring };
+    // The underside of the last deck, for the break-through: a full sheet of circles that thins from the
+    // middle outward, with weak spots that open early and thick spots that linger.
+    const grain = 0.11;
+    const cells: ExitCell[] = [];
+    for (let gy = -1.5; gy <= 1.5; gy += grain) {
+        for (let gx = -1.5; gx <= 1.5; gx += grain) {
+            const u = gx + (rand() - 0.5) * grain * 0.7;
+            const v = gy + (rand() - 0.5) * grain * 0.7;
+            const val =
+                0.6 * noise(u / 0.5 + 3, v / 0.5 + 7) +
+                0.4 * noise(u / 0.2 + 11, v / 0.2 + 5) +
+                0.9 * (1 - Math.exp(-(u * u + v * v) / 0.3));
+            cells.push({ u, v, val, j: 0.85 + rand() * 0.3 });
+        }
+    }
+    const vals = cells.map((c) => c.val);
+    return { decks, exit: { cells, grain, lo: Math.min(...vals), hi: Math.max(...vals) } };
 }
 
-const clamp = (v: number) => Math.min(1, Math.max(0, v));
+// Where a deck is at dive progress `into` (0-1): its depth ahead of the camera, how far it has come up out of
+// the haze, and whether it is still ahead at all. The last deck reaches the camera as the dive ends.
+export function deckView(into: number, deck: Deck) {
+    const z = deck.d - (FAR_D - 0.06) * Math.pow(into, 1.1);
+    return { z, alpha: clamp(into / 0.2) * clamp((4.4 - z) / 1.4), visible: z > 0.07 };
+}
 
-// Where the reveal's hole and its ring of clouds are at reveal progress p (0-1) on a width x height screen.
-// The ring speeds outward at the end so the last frame is clear before the overlay is removed.
-export function revealLayout(p: number, width: number, height: number, ring: RingCloud[]) {
-    const e = p < 0.5 ? 2 * p * p : 1 - (2 - 2 * p) ** 2 / 2;
-    const R = Math.max(width, height) / 2;
-    const hole = 1.9 * e * R;
-    const d = hole + 0.12 * R + 0.85 * e ** 3 * R;
-    return {
-        hole,
-        clouds: ring.map((c) => ({
-            x: width / 2 + Math.cos(c.a) * d,
-            y: height / 2 + Math.sin(c.a) * d,
-            size: R * (1.5 + 0.8 * e) * c.k * (CLOUDS.size / 0.55),
-            rot: c.a - Math.PI / 2, // humps face the hole
-            flip: c.flip,
-            shape: c.shape,
-        })),
-    };
+// The break-through at progress p (0-1), as circles in units of the screen's larger half-size, centered on
+// the screen. The sheet is already rushing outward when it appears and starts to tear almost at once, so the
+// screen is never a still white; its lumps show that movement while it is still whole. Nothing is left at
+// the end, and the screen is clear well before then.
+export function exitView(p: number, exit: ExitSheet): { scale: number; base: Circle[]; lumps: Circle[] } {
+    const scale = 1 + 1.7 * (1 - (1 - p) ** 2);
+    const thr = exit.lo - 0.04 + (exit.hi - exit.lo + 0.04) * p;
+    const base: Circle[] = [];
+    const lumps: Circle[] = [];
+    for (const c of exit.cells) {
+        const f = clamp((c.val - thr) / 0.25);
+        if (f <= 0) continue;
+        const r = exit.grain * 1.5 * c.j * scale * Math.pow(f, 0.6);
+        base.push([c.u * scale, c.v * scale, r]);
+        // Lumps sit inside the sheet, away from the torn edges.
+        if (f > 0.6 && c.j < 0.96) lumps.push([c.u * scale, c.v * scale, r * 0.6]);
+    }
+    return { scale, base, lumps };
+}
+
+const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+function mix(a: string, b: string, f: number): string {
+    const A = rgb(a);
+    const B = rgb(b);
+    return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(',')})`;
 }
 
 export type CloudTimes = { cloudsFrom: number; cover: number; revealMs: number };
@@ -155,72 +157,53 @@ export type CloudLayer = {
     resize: (width: number, height: number, dpr: number) => void;
     // Draws the frame at time t (ms) and returns true once the clouds cover the screen.
     draw: (t: number) => boolean;
+    // True once the break-through has left nothing on screen, which is well before its time is up.
+    cleared: () => boolean;
 };
 
-// Clouds stream past as the camera dives, it flies into one big cloud, then a hole opens from the center.
+// The camera drops through the decks into the last one, then its underside tears open onto the page.
 export function createCloudLayer(canvas: HTMLCanvasElement, times: CloudTimes): CloudLayer {
     const g = canvas.getContext('2d')!;
+    // A second canvas for fading a deck in as one flat shape, so its shade never shows through its white.
+    const scratch = document.createElement('canvas').getContext('2d')!;
     const field = cloudField();
-    const paths = new Map<CloudShape, { shape: Path2D; top: Path2D }>();
-    const pathsFor = (cloud: CloudShape) => {
-        let p = paths.get(cloud);
-        if (!p) {
-            // One path per cloud so overlapping parts fill once and the cloud fades as a single shape.
-            const build = (dy: number) => {
-                const path = new Path2D();
-                for (const part of cloud.parts) {
-                    if (Array.isArray(part)) {
-                        const [x, y, r] = part;
-                        path.moveTo(x + r, y + dy);
-                        path.arc(x, y + dy, r, 0, Math.PI * 2);
-                    } else {
-                        const [x, y, len, h] = part.pill;
-                        path.moveTo(x, y + dy + h / 2);
-                        path.arc(x, y + dy, h / 2, Math.PI / 2, (Math.PI * 3) / 2);
-                        path.lineTo(x + len, y + dy - h / 2);
-                        path.arc(x + len, y + dy, h / 2, -Math.PI / 2, Math.PI / 2);
-                        path.closePath();
-                    }
-                }
-                return path;
-            };
-            p = { shape: build(0), top: build(-TOP_SHIFT) };
-            paths.set(cloud, p);
+    const toPath = (circles: Circle[]) => {
+        const path = new Path2D();
+        for (const [x, y, r] of circles) {
+            path.moveTo(x + r, y);
+            path.arc(x, y, r, 0, Math.PI * 2);
         }
-        return p;
+        return path;
     };
+    const decks = field.decks.map((deck) => ({ deck, base: toPath(deck.base), bumps: toPath(deck.bumps) }));
 
     let width = 1;
     let height = 1;
     let dpr = 1;
+    let cleared = false;
 
-    // plain: white only, so clouds against the whiteout blend into it.
-    const drawCloud = (cloud: CloudShape, cx: number, cy: number, size: number, flip: boolean, alpha: number, plain = false, rot = 0) => {
-        if (alpha <= 0.002 || size < 2) return;
-        const { shape, top } = pathsFor(cloud);
-        g.globalAlpha = Math.min(1, alpha);
-        g.save();
-        g.translate(cx, cy);
-        if (rot) g.rotate(rot);
-        if (flip) g.scale(-1, 1);
-        g.scale(size, size);
-        g.beginPath();
-        g.rect(-1, -1, 2, 1 + FLAT_BASE);
-        g.clip();
-        if (plain) {
-            g.fillStyle = WHITE;
-            g.fill(shape);
-        } else {
-            g.fillStyle = SHADE;
-            g.fill(shape);
-            g.beginPath();
-            g.rect(-1, -1, 2, 1 + FLAT_BASE - TOP_SHIFT);
-            g.clip();
-            g.clip(shape);
-            g.fillStyle = WHITE;
-            g.fill(top);
-        }
-        g.restore();
+    // far: 0 for a deck at the camera, 1 for one deep in the haze.
+    const fillDeck = (c: CanvasRenderingContext2D, d: (typeof decks)[number], cx: number, cy: number, k: number, far: number) => {
+        const white = mix(WHITE, WHITE_FAR, far);
+        const shade = mix(SHADE, SHADE_FAR, far);
+        const edge = 0.22 * d.deck.s;
+        const lump = 0.14 * d.deck.s;
+        c.save();
+        c.translate(cx, cy);
+        c.scale(k, k);
+        c.translate(LIGHT_X * edge, LIGHT_Y * edge);
+        c.fillStyle = shade;
+        c.fill(d.base);
+        c.translate(-LIGHT_X * edge, -LIGHT_Y * edge);
+        c.fillStyle = white;
+        c.fill(d.base);
+        c.translate(LIGHT_X * lump, LIGHT_Y * lump);
+        c.fillStyle = shade;
+        c.fill(d.bumps);
+        c.translate(-LIGHT_X * lump, -LIGHT_Y * lump);
+        c.fillStyle = white;
+        c.fill(d.bumps);
+        c.restore();
     };
 
     return {
@@ -228,8 +211,10 @@ export function createCloudLayer(canvas: HTMLCanvasElement, times: CloudTimes): 
             width = w;
             height = h;
             dpr = ratio;
-            canvas.width = Math.round(w * ratio);
-            canvas.height = Math.round(h * ratio);
+            for (const c of [canvas, scratch.canvas]) {
+                c.width = Math.round(w * ratio);
+                c.height = Math.round(h * ratio);
+            }
         },
         draw(t) {
             g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -241,53 +226,89 @@ export function createCloudLayer(canvas: HTMLCanvasElement, times: CloudTimes): 
             const R = Math.max(width, height) / 2;
             const cx = width / 2;
             const cy = height / 2;
-            const size = CLOUDS.size;
 
-            // The air hazes over as the camera drops into the clouds.
-            if (!covered && into > 0) {
-                g.globalAlpha = CLOUDS.haze * Math.pow(into, 1.6);
-                g.fillStyle = WHITE;
-                g.fillRect(0, 0, width, height);
-            }
-
-            // Clouds approach from far away and stream outward past the camera, farthest drawn first.
-            const travel = 4.6 * Math.pow(into, 1.1) + (covered ? (t - times.cover) / 200 : 0);
-            const appear = clamp(into / 0.25);
-            const visible = field.tunnel
-                .map((c) => ({ c, z: c.z - travel }))
-                .filter((v) => v.z > 0.08)
-                .sort((a, b) => b.z - a.z);
-            for (const { c, z } of visible) {
-                const k = 1 / z;
-                const x = cx + Math.cos(c.a) * c.r * R * k;
-                const y = cy + Math.sin(c.a) * c.r * R * k;
-                drawCloud(c.shape, x, y, size * c.s * R * k, c.flip, appear * clamp((5.6 - z) / 0.8));
-            }
-
-            g.globalAlpha = 1;
-            g.fillStyle = WHITE;
             if (!covered) {
-                // Fly straight into one big cloud dead ahead, aimed at its upper humps so the flat base drops
-                // off the bottom of the screen early. It becomes the whiteout.
-                const heroSize = (size * 2.2 * R) / (5 - 4.92 * Math.pow(into, 1.1));
-                drawCloud(field.hero, cx, cy + 0.17 * heroSize, heroSize, false, appear, true);
-                const sheet = clamp((into - 0.95) / 0.05);
+                const haze = CLOUDS.haze * 0.14 * Math.pow(into, 1.2);
+                // Farthest deck first, with a layer of hazy air under each one.
+                for (let i = decks.length - 1; i >= 0; i--) {
+                    const d = decks[i];
+                    g.globalAlpha = haze;
+                    g.fillStyle = HAZE;
+                    g.fillRect(0, 0, width, height);
+                    const { z, alpha, visible } = deckView(into, d.deck);
+                    if (!visible || alpha <= 0.004) continue;
+                    const k = R / z;
+                    const far = clamp((z - 0.6) / 3.6);
+                    // Each deck throws a flat shadow on whatever is below it.
+                    const drop = 0.6 * d.deck.s * k;
+                    g.save();
+                    g.globalAlpha = alpha * 0.12;
+                    g.translate(cx + LIGHT_X * drop, cy + LIGHT_Y * drop);
+                    g.scale(k, k);
+                    g.fillStyle = SHADOW;
+                    g.fill(d.base);
+                    g.restore();
+                    if (alpha >= 0.995) {
+                        g.globalAlpha = 1;
+                        fillDeck(g, d, cx, cy, k, far);
+                    } else {
+                        scratch.setTransform(dpr, 0, 0, dpr, 0, 0);
+                        scratch.clearRect(0, 0, width, height);
+                        fillDeck(scratch, d, cx, cy, k, far);
+                        g.globalAlpha = alpha;
+                        g.drawImage(scratch.canvas, 0, 0, width, height);
+                    }
+                }
+                // The last deck rises to meet the camera and becomes the whiteout.
+                const sheet = clamp((into - 0.93) / 0.07);
                 if (sheet > 0) {
                     g.globalAlpha = sheet;
+                    g.fillStyle = WHITE;
                     g.fillRect(0, 0, width, height);
                 }
+                g.globalAlpha = 1;
                 return false;
             }
 
-            // A hole opens from the center, ringed by big puffy clouds turned to face it.
-            const reveal = revealLayout(clamp((t - times.cover) / times.revealMs), width, height, field.ring);
-            g.beginPath();
-            g.rect(0, 0, width, height);
-            g.arc(cx, cy, reveal.hole, 0, Math.PI * 2);
-            g.fill('evenodd');
-            for (const c of reveal.clouds) drawCloud(c.shape, c.x, c.y, c.size, c.flip, 1, true, c.rot);
-            g.globalAlpha = 1;
+            // Out the bottom of the deck: it thins and tears open in several places as it rushes past.
+            const p = clamp((t - times.cover) / times.revealMs);
+            const view = exitView(p, field.exit);
+            const edge = 0.22 * field.exit.grain * view.scale * R;
+            // The lumps' shade grows out of the whiteout rather than popping in.
+            const lump = 0.14 * field.exit.grain * view.scale * R * clamp(p / 0.06);
+            let onScreen = 0;
+            const onScreenPath = (circles: Circle[]) => {
+                const path = new Path2D();
+                onScreen = 0;
+                for (const [x, y, r] of circles) {
+                    const px = cx + x * R;
+                    const py = cy + y * R;
+                    const pr = r * R;
+                    if (px + pr < -edge || px - pr > width + edge || py + pr < -edge || py - pr > height + edge) continue;
+                    path.moveTo(px + pr, py);
+                    path.arc(px, py, pr, 0, Math.PI * 2);
+                    onScreen++;
+                }
+                return path;
+            };
+            const lumps = onScreenPath(view.lumps);
+            const base = onScreenPath(view.base);
+            cleared = onScreen === 0;
+            const fillOffset = (path: Path2D, by: number) => {
+                g.save();
+                g.translate(LIGHT_X * by, LIGHT_Y * by);
+                g.fillStyle = SHADE;
+                g.fill(path);
+                g.restore();
+            };
+            fillOffset(base, edge);
+            g.fillStyle = WHITE;
+            g.fill(base);
+            fillOffset(lumps, lump);
+            g.fillStyle = WHITE;
+            g.fill(lumps);
             return true;
         },
+        cleared: () => cleared,
     };
 }
